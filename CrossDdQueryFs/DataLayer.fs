@@ -4,11 +4,11 @@ open CrossDdQueryFs
 
 // Data models
 module DataModels =
-  type Role = {id:Guid; name:string}
-  type Profile = {id:Guid; name:string}
-  type UserRoleRow = {userId:Guid; roleName:string; email:string option; RoleId:Guid}
-  type RoleProfileRow = {profileId: Guid; roleId: Guid}
-  type UserProfile = {userId: Guid; profileId: Guid option}
+  type Role = {Id:Guid; Name:string}
+  type Profile = {Id:Guid; Name:string}
+  type UserRoleRow = {UserId:Guid; RoleName:string; Email:string option; RoleId:Guid}
+  type RoleProfileRow = {ProfileId: Guid; RoleId: Guid}
+  type UserProfile = {UserId: Guid; ProfileId: Guid option}
 
 module Repository =
   open DataModels
@@ -16,11 +16,11 @@ module Repository =
     
   [<Literal>]
   let connectionStringApplication = 
-    "Server=(LocalDB)\MSSQLLocalDB;Integrated Security=true;initial catalog=box-application-localdb;"
+    "Server=(LocalDB)\\MSSQLLocalDB;Integrated Security=true;initial catalog=box-application-localdb;"
     
   [<Literal>]
   let connectionStringCustomer = 
-    "Server=(LocalDB)\MSSQLLocalDB;Integrated Security=true;initial catalog=box-application-localdb;"
+    "Server=(LocalDB)\\MSSQLLocalDB;Integrated Security=true;initial catalog=box-customer-localdb;"
 
   [<Literal>]
   let userRolesQuery ="
@@ -47,18 +47,18 @@ module Repository =
   let getUserRoleRows() =
     use cmd = new SqlCommandProvider<userRolesQuery, connectionStringApplication>(connStrings.Application)
     cmd.Execute() 
-      |> Seq.map (fun u -> {userId = u.UserId |> Guid.Parse; roleName = u.RoleName; email = u.Email; RoleId = u.RoleId |> Guid.Parse})
+      |> Seq.map (fun u -> {UserId = u.UserId |> Guid.Parse; RoleName = u.RoleName; Email = u.Email; RoleId = u.RoleId |> Guid.Parse})
       |> Seq.toList
 
   let getRolesPerProfile() =
     use cmd = new SqlCommandProvider<rolesPerProfileQuery, connectionStringApplication>(connStrings.Application)
     cmd.Execute()
-      |> Seq.map (fun rpp -> {profileId = rpp.FunctionProfileCode; roleId = rpp.RoleId |> Guid.Parse})
+      |> Seq.map (fun rpp -> {ProfileId = rpp.FunctionProfileCode; RoleId = rpp.RoleId |> Guid.Parse})
       |> Seq.toList
 
   let getAllRoles() =
     use cmd = new SqlCommandProvider<rolesQuery, connectionStringApplication>(connStrings.Application)
-    let toRole (r: SqlCommandProvider<rolesQuery, connectionStringApplication>.Record) :Role = {id=r.Id |> Guid.Parse; name=r.Name}
+    let toRole (r: SqlCommandProvider<rolesQuery, connectionStringApplication>.Record) :Role = {Id=r.Id |> Guid.Parse; Name=r.Name}
     cmd.Execute()
       |> Seq.map toRole
       |> Seq.toList
@@ -66,11 +66,11 @@ module Repository =
   let getProfiles() =
     use cmd = new SqlCommandProvider<profilesQuery, connectionStringApplication>(connStrings.Application)
     cmd.Execute()
-      |> Seq.map (fun r -> {id=r.id; name=r.Name})
+      |> Seq.map (fun r -> {Id=r.id; Name=r.Name})
       |> Seq.toList
 
   let getUsersProfileRows() =
     use cmd = new SqlCommandProvider<usersProfilesQuery, connectionStringCustomer>(connStrings.Customer)
     cmd.Execute()
-      |> Seq.map (fun up -> {profileId = up.FunctionProfileCode; userId = up.UserId})
+      |> Seq.map (fun up -> {ProfileId = up.FunctionProfileCode; UserId = up.UserId})
       |> Seq.toList
