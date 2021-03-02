@@ -11,6 +11,10 @@
   
   let environment =
     System.Environment.GetEnvironmentVariable "ENVIRONMENT"
+    |> fun s -> 
+        match s with
+          | null -> ""
+          | _ -> s
     |> (fun s -> s.Equals("development", StringComparison.InvariantCultureIgnoreCase))
     |> function
       | true -> Environment.Development
@@ -24,7 +28,7 @@
       | false -> None
   
   let mergeSettings =
-    let mutable jsonMergeSettings = JsonMergeSettings()
+    let jsonMergeSettings = JsonMergeSettings()
     jsonMergeSettings.MergeArrayHandling <- MergeArrayHandling.Replace
     jsonMergeSettings
     
