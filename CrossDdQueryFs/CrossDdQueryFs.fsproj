@@ -9,7 +9,7 @@
     <Content Include="appSettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="appSettings.Development.json">
+    <Content Include="appSettings.development.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Compile Include="Utils.fs" />

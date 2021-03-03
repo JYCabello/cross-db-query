@@ -1,53 +1,29 @@
 ﻿module CrossDdQueryFs.Configuration
-  open System
   open System.IO
   open FSharp.Data
   open Newtonsoft.Json
   open Newtonsoft.Json.Linq
-  open Utils
 
   type AppSettings = JsonProvider<"appSettings.json">
 
-  type Environment = Development | Production
-  
-  let environment =
-    let envNames = GetUnionCaseNames<Environment>
-    System.Environment.GetEnvironmentVariable "ENVIRONMENT"
-    |> fun s -> 
-        match s with
-          | null -> ""
-          | _ -> s
-    |> (fun s -> s.Equals("development", StringComparison.InvariantCultureIgnoreCase))
-    |> function
-      | true -> Environment.Development
-      | false -> Environment.Production
-
   let getContents fileName =
-    fileName
-    |> File.Exists
-    |> function
-      | true -> File.ReadAllText fileName |> Some
-      | false -> None
+    if File.Exists fileName then File.ReadAllText fileName |> Some else None
+      
+  let envSettings =
+    System.Environment.GetEnvironmentVariable "ENVIRONMENT"
+    |> (fun s -> if System.String.IsNullOrWhiteSpace s then None else s.ToLowerInvariant() |> Some)
+    |> Option.map (sprintf "appSettings.%s.json")
+    |> Option.bind getContents
+    |> Option.map JObject.Parse
   
   let mergeSettings =
     let jsonMergeSettings = JsonMergeSettings()
     jsonMergeSettings.MergeArrayHandling <- MergeArrayHandling.Replace
     jsonMergeSettings
     
-  let getAdditionalFileContents particle =
-    sprintf "appSettings.%s.json" particle
-    |> getContents
-    |> Option.map JObject.Parse
-    
   let settings =
     let primary = "appSettings.json" |> File.ReadAllText |> JObject.Parse
-    let additional =
-      environment
-        |> function
-          | Development -> nameof(Environment.Development) |> Some
-          | Production -> None
-      |> Option.bind getAdditionalFileContents
-    match additional with
+    match envSettings with
         | Some jo -> primary.Merge(jo, mergeSettings); primary
         | None -> primary
       |> (fun jo -> jo.ToString(Formatting.None))
