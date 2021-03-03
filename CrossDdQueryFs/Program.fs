@@ -1,25 +1,26 @@
 ﻿open System
 open System.IO
-open CrossDdQueryFs
 open DataLayer
 open DataModels
 open Utils
 
-type UserWithRoles = {id:Guid; profileId:Guid option; email:string option; roles:Role list}
+type UserWithRoles =
+  { Id:Guid
+    ProfileId:Guid option
+    Email:string option
+    Roles:Role list }
 //Add missing roles
 type DelinquentUser = 
-  {
-    id:Guid
-    profileId:string
-    profileName:string
-    email:string
-    extraRoles:string list
-    missingRoles:string list
-  }
+  { Id:Guid
+    ProfileId:string
+    ProfileName:string
+    Email:string
+    ExtraRoles:string list
+    MissingRoles:string list }
 
 let getProfileRoleIds (usersProfiles: UserProfile list) (rolesPerProfile: RoleProfileRow list) (user: UserWithRoles) =
   usersProfiles
-    |> List.tryFind (fun up -> up.UserId = user.id) 
+    |> List.tryFind (fun up -> up.UserId = user.Id) 
     |> Option.bind (fun up -> up.ProfileId)
     |> Option.map 
       (fun pId -> 
@@ -42,48 +43,48 @@ let toDistinctUsers usersProfiles (userRoleRows: UserRoleRow list) =
   userRoleRows
     |> List.distinctBy (fun u -> u.UserId)
     |> List.map (fun u -> {
-      id = u.UserId
-      profileId = u |> getProfileId usersProfiles
-      roles = (u |> getRoles userRoleRows)
-      email = u.Email
+      Id = u.UserId
+      ProfileId = u |> getProfileId usersProfiles
+      Roles = (u |> getRoles userRoleRows)
+      Email = u.Email
     })
 
 let roleIdInList roleIds role =
-  not (roleIds |> List.exists (fun rId -> role.id = rId))
+  not (roleIds |> List.exists (fun rId -> role.Id = rId))
 
 
 let toDelinquent userProfileRows roleProfileRows (allProfiles: Profile list) (allRoles: Role list) (user: UserWithRoles) =
   let profileRoleIds = user |> getProfileRoleIds userProfileRows roleProfileRows
-  let extraRoles = user.roles |> List.where (fun r -> not (profileRoleIds |> List.exists (fun pr -> r.Id = pr)))
+  let extraRoles = user.Roles |> List.where (fun r -> not (profileRoleIds |> List.exists (fun pr -> r.Id = pr)))
   let defaultUnknown opt = opt |> Option.defaultValue "unknown"
   let missingRoles =
    profileRoleIds
-     |> List.filter (fun id -> not (user.roles |> List.exists (fun r -> r.Id = id)))
+     |> List.filter (fun id -> not (user.Roles |> List.exists (fun r -> r.Id = id)))
      |> List.map (fun id -> allRoles |> List.find (fun r -> r.Id = id))
   {
-    id= user.id
-    profileId=
-      user.profileId
+    Id= user.Id
+    ProfileId=
+      user.ProfileId
         |> Option.map (sprintf "%A")
         |> defaultUnknown
-    profileName=
+    ProfileName=
       option {
-        let! pid = user.profileId
+        let! pid = user.ProfileId
         let! profile = allProfiles |> List.tryFind (fun p -> p.Id = pid)
         return profile.Name
       } |> defaultUnknown
-    email= user.email |> defaultUnknown
-    extraRoles= extraRoles |> List.map (fun r -> r.Name)
-    missingRoles= missingRoles |> List.map (fun r -> r.Name)
+    Email= user.Email |> defaultUnknown
+    ExtraRoles= extraRoles |> List.map (fun r -> r.Name)
+    MissingRoles= missingRoles |> List.map (fun r -> r.Name)
   }
 
 let hasIncorrectRoles userProfileRows rolesPerProfile user =
   let profileRoleIds = user |> getProfileRoleIds userProfileRows rolesPerProfile
-  let hasExtraRoles = user.roles |> List.exists (fun r -> not (profileRoleIds |> List.exists (fun pr -> r.Id = pr)))
-  let hasMissingRoles = profileRoleIds |> List.exists (fun prId -> not (user.roles |> List.exists (fun r -> prId = r.Id)))
+  let hasExtraRoles = user.Roles |> List.exists (fun r -> not (profileRoleIds |> List.exists (fun pr -> r.Id = pr)))
+  let hasMissingRoles = profileRoleIds |> List.exists (fun prId -> not (user.Roles |> List.exists (fun r -> prId = r.Id)))
   hasExtraRoles || hasMissingRoles
 
-let obtain() =
+let program() =
   let userRoleRows = Repository.getUserRoleRows()
   let rolesPerProfile = Repository.getRolesPerProfile()
   let userProfileRows = Repository.getUsersProfileRows()
@@ -101,8 +102,8 @@ let obtain() =
   File.WriteAllLines("output.txt", delinquentUsers |> List.map (sprintf "%A"))
 
 [<EntryPoint>]
-let main _ =
-    obtain()
+let main _  =
+    program()
     printf "Press a key to end"
     Console.ReadKey() |> ignore
     0
