@@ -72,6 +72,5 @@ module Repository =
 
   let getUsersProfileRows () =
     query {
-      for up in custCtx().Dbo.UserSettings do
-      select { ProfileId = up.FunctionProfileCode; UserId = up.UserId }
+      for up in custCtx().Dbo.UserSettings do select { ProfileId = up.FunctionProfileCode; UserId = up.UserId }
     } |> Seq.toList
