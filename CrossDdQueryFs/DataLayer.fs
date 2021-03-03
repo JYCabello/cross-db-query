@@ -35,10 +35,19 @@ module Repository =
 
   let connStrings = Configuration.settings.ConnectionStrings
 
-  type ApplicationDb = SqlDataProvider<Common.DatabaseProviderTypes.MSSQLSERVER, appConnStr>
+  type ApplicationDb =
+    SqlDataProvider<
+      DatabaseVendor = Common.DatabaseProviderTypes.MSSQLSERVER,
+      ConnectionString = appConnStr,
+      UseOptionTypes = true>
   let getAppContext () = ApplicationDb.GetDataContext(connStrings.Application)
-  type CustomerDb = SqlDataProvider<Common.DatabaseProviderTypes.MSSQLSERVER, custConnStr>
-  let getCustContext () = ApplicationDb.GetDataContext(connStrings.Application)
+  type RolesEntity = ApplicationDb.dataContext.``dbo.AspNetRolesEntity``
+  type CustomerDb =
+    SqlDataProvider<
+      DatabaseVendor = Common.DatabaseProviderTypes.MSSQLSERVER,
+      ConnectionString = custConnStr,
+      UseOptionTypes = true>
+  let getCustContext () = CustomerDb.GetDataContext(connStrings.Customer)
 
   let getUserRoleRows () =
     let ctx = getAppContext ()
@@ -49,24 +58,21 @@ module Repository =
       for u in ur.``dbo.AspNetUsers by Id`` do
       select
         { RoleName = r.Name
-          Email = u.Email |> Some
+          Email = u.Email
           UserId = u.Id |> Guid.Parse
           RoleId = ur.RoleId |> Guid.Parse }
-    }
-    |> Seq.toList
+    } |> Seq.toList
 
   let getRolesPerProfile () =
-    use cmd =
-      new SqlCommandProvider<rolesPerProfileQuery, appConnStr>(connStrings.Application)
+    let context = getAppContext()
+    query {
+      for rpp in context.Dbo.RolePerFunctionProfile do
+      select { ProfileId = rpp.FunctionProfileCode; RoleId = rpp.RoleId |> Guid.Parse }
+    } |> Seq.toList
 
-    cmd.Execute()
-    |> Seq.map (fun rpp -> { ProfileId = rpp.FunctionProfileCode; RoleId = rpp.RoleId |> Guid.Parse })
-    |> Seq.toList
-
-  let getAllRoles (): Role list =
-    let context = ApplicationDb.GetDataContext(connStrings.Application)
-    let toRole (r: ApplicationDb.dataContext.``dbo.AspNetRolesEntity``): Role = { Id = r.Id |> Guid.Parse; Name = r.Name }
-
+  let getAllRoles () =
+    let context = getAppContext()
+    let toRole (r: RolesEntity): Role = { Id = r.Id |> Guid.Parse; Name = r.Name }
     query {
       for r in context.Dbo.AspNetRoles do
       select (r |> toRole)
@@ -78,8 +84,8 @@ module Repository =
     cmd.Execute() |> Seq.map (fun r -> { Id = r.id; Name = r.Name }) |> Seq.toList
 
   let getUsersProfileRows () =
-    use cmd = new SqlCommandProvider<usersProfilesQuery, custConnStr>(connStrings.Customer)
-
-    cmd.Execute()
-    |> Seq.map (fun up -> { ProfileId = up.FunctionProfileCode; UserId = up.UserId })
-    |> Seq.toList
+    let context = getCustContext()
+    query {
+      for up in context.Dbo.UserSettings do
+      select { ProfileId = up.FunctionProfileCode; UserId = up.UserId }
+    } |> Seq.toList
