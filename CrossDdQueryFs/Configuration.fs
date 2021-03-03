@@ -4,12 +4,14 @@
   open FSharp.Data
   open Newtonsoft.Json
   open Newtonsoft.Json.Linq
+  open Utils
 
   type AppSettings = JsonProvider<"appSettings.json">
 
   type Environment = Development | Production
   
   let environment =
+    let envNames = GetUnionCaseNames<Environment>
     System.Environment.GetEnvironmentVariable "ENVIRONMENT"
     |> fun s -> 
         match s with
@@ -38,11 +40,11 @@
     |> Option.map JObject.Parse
     
   let settings =
-    let primary = File.ReadAllText "appSettings.json" |> JObject.Parse
+    let primary = "appSettings.json" |> File.ReadAllText |> JObject.Parse
     let additional =
       environment
         |> function
-          | Development -> "Development" |> Some
+          | Development -> nameof(Environment.Development) |> Some
           | Production -> None
       |> Option.bind getAdditionalFileContents
     match additional with

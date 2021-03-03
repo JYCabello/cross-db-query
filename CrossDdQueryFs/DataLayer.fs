@@ -31,6 +31,7 @@ module Repository =
       DatabaseVendor = Common.DatabaseProviderTypes.MSSQLSERVER,
       ConnectionString = appConnStr,
       UseOptionTypes = true>
+
   let getAppContext () = ApplicationDb.GetDataContext(connStrs.Application)
 
   type CustomerDb =
@@ -38,8 +39,9 @@ module Repository =
       DatabaseVendor = Common.DatabaseProviderTypes.MSSQLSERVER,
       ConnectionString = custConnStr,
       UseOptionTypes = true>
+
   let getCustContext () = CustomerDb.GetDataContext(connStrs.Customer)
-  
+
   type RolesEntity = ApplicationDb.dataContext.``dbo.AspNetRolesEntity``
   let toRole (r: RolesEntity): Role = { Id = r.Id |> Guid.Parse; Name = r.Name }
 

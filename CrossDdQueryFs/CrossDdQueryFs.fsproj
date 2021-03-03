@@ -12,8 +12,8 @@
     <Content Include="appSettings.Development.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Compile Include="Configuration.fs" />
     <Compile Include="Utils.fs" />
+    <Compile Include="Configuration.fs" />
     <Compile Include="DataLayer.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

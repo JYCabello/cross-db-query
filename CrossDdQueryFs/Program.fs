@@ -5,18 +5,18 @@ open DataModels
 open Utils
 
 type UserWithRoles =
-  { Id:Guid
-    ProfileId:Guid option
-    Email:string option
-    Roles:Role list }
+  { Id: Guid
+    ProfileId: Guid option
+    Email: string option
+    Roles: Role list }
 //Add missing roles
 type DelinquentUser = 
-  { Id:Guid
-    ProfileId:string
-    ProfileName:string
-    Email:string
-    ExtraRoles:string list
-    MissingRoles:string list }
+  { Id: Guid
+    ProfileId: string
+    ProfileName: string
+    Email: string
+    ExtraRoles: string list
+    MissingRoles: string list }
 
 let getProfileRoleIds (usersProfiles: UserProfile list) (rolesPerProfile: RoleProfileRow list) (user: UserWithRoles) =
   usersProfiles
