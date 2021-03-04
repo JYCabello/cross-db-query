@@ -6,14 +6,11 @@
 
   type AppSettings = JsonProvider<"appSettings.json">
 
-  let getContents fileName =
-    if File.Exists fileName then File.ReadAllText fileName |> Some else None
-      
   let envSettings =
     System.Environment.GetEnvironmentVariable "ENVIRONMENT"
     |> (fun s -> if System.String.IsNullOrWhiteSpace s then None else s.ToLowerInvariant() |> Some)
     |> Option.map (sprintf "appSettings.%s.json")
-    |> Option.bind getContents
+    |> Option.bind (fun file -> if File.Exists file then File.ReadAllText file |> Some else None)
     |> Option.map JObject.Parse
   
   let mergeSettings =
