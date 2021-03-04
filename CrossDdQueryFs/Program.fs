@@ -85,7 +85,7 @@ let program() =
   let userProfileRows = Repository.getUsersProfileRows()
   let allProfiles = Repository.getProfiles()
   let allRoles = Repository.getAllRoles()
-  let distinctUsers = userRoleRows |> toDistinctUsers userProfileRows 
+  let distinctUsers = toDistinctUsers userProfileRows userRoleRows
   let delinquentUsers =
     distinctUsers 
       |> List.filter (hasIncorrectRoles userProfileRows rolesPerProfile)
@@ -94,7 +94,7 @@ let program() =
   printfn "There was a total of %i users with non matching roles over a totale of %i users"
     (delinquentUsers |> List.length)
     (distinctUsers |> List.length)
-  File.WriteAllLines("output.txt", delinquentUsers |> List.map (sprintf "%A"))
+  File.WriteAllLines("output.txt", List.map (sprintf "%A") delinquentUsers)
 
 [<EntryPoint>]
 let main _  =
