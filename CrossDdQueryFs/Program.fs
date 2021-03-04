@@ -44,42 +44,37 @@ let toDistinctUsers usersProfiles (userRoleRows: UserRoleRow list) =
     |> List.distinctBy (fun u -> u.UserId)
     |> List.map (fun u -> {
       Id = u.UserId
-      ProfileId = u |> getProfileId usersProfiles
-      Roles = (u |> getRoles userRoleRows)
+      ProfileId = getProfileId usersProfiles u
+      Roles = getRoles userRoleRows u
       Email = u.Email
     })
 
-let roleIdInList roleIds role =
-  not (roleIds |> List.exists (fun rId -> role.Id = rId))
-
-
 let toDelinquent userProfileRows roleProfileRows (allProfiles: Profile list) (allRoles: Role list) (user: UserWithRoles) =
-  let profileRoleIds = user |> getProfileRoleIds userProfileRows roleProfileRows
+  let profileRoleIds = getProfileRoleIds userProfileRows roleProfileRows user
   let extraRoles = user.Roles |> List.where (fun r -> not (profileRoleIds |> List.exists (fun pr -> r.Id = pr)))
-  let defaultUnknown opt = opt |> Option.defaultValue "unknown"
+  let defaultUnknown opt = Option.defaultValue "unknown" opt
   let missingRoles =
    profileRoleIds
      |> List.filter (fun id -> not (user.Roles |> List.exists (fun r -> r.Id = id)))
      |> List.map (fun id -> allRoles |> List.find (fun r -> r.Id = id))
   {
-    Id= user.Id
-    ProfileId=
+    Id = user.Id
+    ProfileId =
       user.ProfileId
         |> Option.map (sprintf "%A")
         |> defaultUnknown
-    ProfileName=
-      option {
-        let! pid = user.ProfileId
-        let! profile = allProfiles |> List.tryFind (fun p -> p.Id = pid)
-        return profile.Name
-      } |> defaultUnknown
-    Email= user.Email |> defaultUnknown
-    ExtraRoles= extraRoles |> List.map (fun r -> r.Name)
-    MissingRoles= missingRoles |> List.map (fun r -> r.Name)
+    ProfileName =
+      user.ProfileId
+        |> Option.bind (fun pid -> allProfiles |> List.tryFind (fun p -> p.Id = pid))
+        |> Option.map (fun p -> p.Name)
+        |> defaultUnknown
+    Email = user.Email |> defaultUnknown
+    ExtraRoles = extraRoles |> List.map (fun r -> r.Name)
+    MissingRoles = missingRoles |> List.map (fun r -> r.Name)
   }
 
 let hasIncorrectRoles userProfileRows rolesPerProfile user =
-  let profileRoleIds = user |> getProfileRoleIds userProfileRows rolesPerProfile
+  let profileRoleIds = getProfileRoleIds userProfileRows rolesPerProfile user
   let hasExtraRoles = user.Roles |> List.exists (fun r -> not (profileRoleIds |> List.exists (fun pr -> r.Id = pr)))
   let hasMissingRoles = profileRoleIds |> List.exists (fun prId -> not (user.Roles |> List.exists (fun r -> prId = r.Id)))
   hasExtraRoles || hasMissingRoles
