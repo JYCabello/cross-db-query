@@ -79,26 +79,39 @@ let hasIncorrectRoles userProfileRows rolesPerProfile user =
   let hasMissingRoles = profileRoleIds |> List.exists (fun prId -> not (user.Roles |> List.exists (fun r -> prId = r.Id)))
   hasExtraRoles || hasMissingRoles
 
-let program() =
-  let userRoleRows = Repository.getUserRoleRows()
-  let rolesPerProfile = Repository.getRolesPerProfile()
-  let userProfileRows = Repository.getUsersProfileRows()
-  let allProfiles = Repository.getProfiles()
-  let allRoles = Repository.getAllRoles()
-  let distinctUsers = toDistinctUsers userProfileRows userRoleRows
-  let delinquentUsers =
-    distinctUsers 
-      |> List.filter (hasIncorrectRoles userProfileRows rolesPerProfile)
-      |> List.map (toDelinquent userProfileRows rolesPerProfile allProfiles allRoles)
-  printfn "%A" delinquentUsers
-  printfn "There was a total of %i users with non matching roles over a totale of %i users"
-    (delinquentUsers |> List.length)
-    (distinctUsers |> List.length)
-  File.WriteAllLines("output.txt", List.map (sprintf "%A") delinquentUsers)
+let fetch () =
+  async {
+    let! userRoleRowsChild = Repository.getUserRoleRows() |> Async.StartChild
+    let! rolesPerProfileChild = Repository.getRolesPerProfile() |> Async.StartChild
+    let! userProfileRowsChild = Repository.getUsersProfileRows() |> Async.StartChild
+    let! allProfilesChild = Repository.getProfiles() |> Async.StartChild
+    let! userRoleRows = userRoleRowsChild
+    let! rolesPerProfile = rolesPerProfileChild
+    let! userProfileRows = userProfileRowsChild
+    let! allProfiles = allProfilesChild
+    return (userRoleRows, rolesPerProfile, userProfileRows, allProfiles)
+  }
+
+let program () =
+  async {
+    let! (userRoleRows, rolesPerProfile, userProfileRows, allProfiles) = fetch()
+    let allRoles = Repository.getAllRoles()
+    let distinctUsers = toDistinctUsers userProfileRows userRoleRows
+    let delinquentUsers =
+      distinctUsers 
+        |> List.filter (hasIncorrectRoles userProfileRows rolesPerProfile)
+        |> List.map (toDelinquent userProfileRows rolesPerProfile allProfiles allRoles)
+    printfn "%A" delinquentUsers
+    printfn "There was a total of %i users with non matching roles over a totale of %i users"
+      (delinquentUsers |> List.length)
+      (distinctUsers |> List.length)
+    File.WriteAllLines("output.txt", List.map (sprintf "%A") delinquentUsers)
+  }
+  
 
 [<EntryPoint>]
 let main _  =
-    program()
+    program() |> Async.RunSynchronously
     printf "Press a key to end"
     Console.ReadKey() |> ignore
     0

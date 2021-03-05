@@ -55,22 +55,22 @@ module Repository =
           Email = u.Email
           UserId = u.Id |> Guid.Parse
           RoleId = ur.RoleId |> Guid.Parse }
-    } |> Seq.toList
+    } |> List.executeQueryAsync
 
   let getRolesPerProfile () =
     query {
       for rpp in appCtx().Dbo.RolePerFunctionProfile do
       select { ProfileId = rpp.FunctionProfileCode; RoleId = rpp.RoleId |> Guid.Parse }
-    } |> Seq.toList
+    } |> List.executeQueryAsync
 
   let getAllRoles () =
     query { for r in appCtx().Dbo.AspNetRoles do select (r |> toRole) } |> Seq.toList
 
   let getProfiles () =
     query { for r in appCtx().Dbo.FunctionProfile do select { Id = r.Code; Name = r.Name } }
-    |> Seq.toList
+    |> List.executeQueryAsync
 
   let getUsersProfileRows () =
     query {
       for up in custCtx().Dbo.UserSettings do select { ProfileId = up.FunctionProfileCode; UserId = up.UserId }
-    } |> Seq.toList
+    } |> List.executeQueryAsync
