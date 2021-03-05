@@ -78,16 +78,11 @@ let hasIncorrectRoles userProfileRows rolesPerProfile user =
   let hasExtraRoles = user.Roles |> List.exists (fun r -> not (profileRoleIds |> List.exists (fun pr -> r.Id = pr)))
   let hasMissingRoles = profileRoleIds |> List.exists (fun prId -> not (user.Roles |> List.exists (fun r -> prId = r.Id)))
   hasExtraRoles || hasMissingRoles
-
+module R = Repository
 let program () =
   async {
     let! (userRoleRows, rolesPerProfile, userProfileRows, allProfiles, allRoles) =
-      parallelTuple5(
-        Repository.getUserRoleRows(),
-        Repository.getRolesPerProfile(),
-        Repository.getUsersProfileRows(),
-        Repository.getProfiles(),
-        Repository.getAllRoles())
+      parallelTuple5(R.usersRoles(), R.rolesPerProfile(), R.usersProfiles(), R.profiles(), R.roles())
     let distinctUsers = toDistinctUsers userProfileRows userRoleRows
     let delinquentUsers =
       distinctUsers 

@@ -45,7 +45,7 @@ module Repository =
   type RolesEntity = ApplicationDb.dataContext.``dbo.AspNetRolesEntity``
   let toRole (r: RolesEntity): Role = { Id = r.Id |> Guid.Parse; Name = r.Name }
 
-  let getUserRoleRows () =
+  let usersRoles () =
     query {
       for r in appCtx().Dbo.AspNetRoles do
       for ur in r.``dbo.AspNetUserRoles by Id`` do
@@ -57,20 +57,20 @@ module Repository =
           RoleId = ur.RoleId |> Guid.Parse }
     } |> List.executeQueryAsync
 
-  let getRolesPerProfile () =
+  let rolesPerProfile () =
     query {
       for rpp in appCtx().Dbo.RolePerFunctionProfile do
       select { ProfileId = rpp.FunctionProfileCode; RoleId = rpp.RoleId |> Guid.Parse }
     } |> List.executeQueryAsync
 
-  let getAllRoles () =
+  let roles () =
     query { for r in appCtx().Dbo.AspNetRoles do select (r |> toRole) } |> List.executeQueryAsync
 
-  let getProfiles () =
+  let profiles () =
     query { for r in appCtx().Dbo.FunctionProfile do select { Id = r.Code; Name = r.Name } }
     |> List.executeQueryAsync
 
-  let getUsersProfileRows () =
+  let usersProfiles () =
     query {
       for up in custCtx().Dbo.UserSettings do select { ProfileId = up.FunctionProfileCode; UserId = up.UserId }
     } |> List.executeQueryAsync
