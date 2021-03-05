@@ -64,7 +64,7 @@ module Repository =
     } |> List.executeQueryAsync
 
   let getAllRoles () =
-    query { for r in appCtx().Dbo.AspNetRoles do select (r |> toRole) } |> Seq.toList
+    query { for r in appCtx().Dbo.AspNetRoles do select (r |> toRole) } |> List.executeQueryAsync
 
   let getProfiles () =
     query { for r in appCtx().Dbo.FunctionProfile do select { Id = r.Code; Name = r.Name } }

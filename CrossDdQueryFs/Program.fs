@@ -79,23 +79,15 @@ let hasIncorrectRoles userProfileRows rolesPerProfile user =
   let hasMissingRoles = profileRoleIds |> List.exists (fun prId -> not (user.Roles |> List.exists (fun r -> prId = r.Id)))
   hasExtraRoles || hasMissingRoles
 
-let fetch () =
-  async {
-    let! userRoleRowsChild = Repository.getUserRoleRows() |> Async.StartChild
-    let! rolesPerProfileChild = Repository.getRolesPerProfile() |> Async.StartChild
-    let! userProfileRowsChild = Repository.getUsersProfileRows() |> Async.StartChild
-    let! allProfilesChild = Repository.getProfiles() |> Async.StartChild
-    let! userRoleRows = userRoleRowsChild
-    let! rolesPerProfile = rolesPerProfileChild
-    let! userProfileRows = userProfileRowsChild
-    let! allProfiles = allProfilesChild
-    return (userRoleRows, rolesPerProfile, userProfileRows, allProfiles)
-  }
-
 let program () =
   async {
-    let! (userRoleRows, rolesPerProfile, userProfileRows, allProfiles) = fetch()
-    let allRoles = Repository.getAllRoles()
+    let! (userRoleRows, rolesPerProfile, userProfileRows, allProfiles, allRoles) =
+      parallelTuple5(
+        Repository.getUserRoleRows(),
+        Repository.getRolesPerProfile(),
+        Repository.getUsersProfileRows(),
+        Repository.getProfiles(),
+        Repository.getAllRoles())
     let distinctUsers = toDistinctUsers userProfileRows userRoleRows
     let delinquentUsers =
       distinctUsers 
