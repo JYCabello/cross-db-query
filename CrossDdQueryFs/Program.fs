@@ -78,6 +78,7 @@ let hasIncorrectRoles userProfileRows rolesPerProfile user =
   let hasExtraRoles = user.Roles |> List.exists (fun r -> not (profileRoleIds |> List.exists (fun pr -> r.Id = pr)))
   let hasMissingRoles = profileRoleIds |> List.exists (fun prId -> not (user.Roles |> List.exists (fun r -> prId = r.Id)))
   hasExtraRoles || hasMissingRoles
+
 module R = Repository
 let program () =
   async {
@@ -89,9 +90,7 @@ let program () =
         |> List.filter (hasIncorrectRoles userProfileRows rolesPerProfile)
         |> List.map (toDelinquent userProfileRows rolesPerProfile allProfiles allRoles)
     printfn "%A" delinquentUsers
-    printfn "There was a total of %i users with non matching roles over a totale of %i users"
-      (delinquentUsers |> List.length)
-      (distinctUsers |> List.length)
+    printfn $"Users with non matching roles: {delinquentUsers |> List.length} \nTotal: {distinctUsers |> List.length}"
     File.WriteAllLines("output.txt", List.map (sprintf "%A") delinquentUsers)
   }
   
