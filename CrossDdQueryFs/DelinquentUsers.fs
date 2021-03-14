@@ -11,7 +11,7 @@ type UserWithRoles =
     ProfileId: Guid option
     Email: string option
     Roles: Role list }
-//Add missing roles
+
 type DelinquentUser = 
   { Id: Guid
     ProfileId: string
@@ -85,7 +85,7 @@ module R = Repository
 let program () =
   async {
     let! (userRoleRows, rolesPerProfile, userProfileRows, allProfiles, allRoles) =
-      parallelTuple5(R.usersRoles, R.rolesPerProfile, R.usersProfiles, R.profiles, R.roles)
+      parallelTuple5(R.usersRoles, R.rolesPerProfile, R.usersProfilesBySettings, R.profiles, R.roles)
     let distinctUsers = toDistinctUsers userProfileRows userRoleRows
     let delinquentUsers =
       distinctUsers 

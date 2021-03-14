@@ -24,3 +24,13 @@ let parallelTuple5 (async1, async2, async3, async4, async5) =
     let! result5 = child5
     return (result1, result2, result3, result4, result5)
   }
+
+let toMap (l: ('a * 'b) list) =
+  let empty = Map<'a, 'b list> []
+  let appendTo (key, value) (d: Map<'a,'b list>) =
+    let current =
+      match d.TryGetValue(key) with
+        | true, value -> value
+        | false, _ -> []
+    d.Add(key, value :: current)
+  List.fold (fun acc t -> appendTo t acc) empty l

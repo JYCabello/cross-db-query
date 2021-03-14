@@ -70,7 +70,17 @@ module Repository =
     query { for r in appCtx().Dbo.FunctionProfile do select { Id = r.Code; Name = r.Name } }
     |> List.executeQueryAsync
 
-  let usersProfiles () =
+  let usersProfilesBySettings () =
     query {
       for up in custCtx().Dbo.UserSettings do select { ProfileId = up.FunctionProfileCode; UserId = up.UserId }
     } |> List.executeQueryAsync
+
+  type UserWithProfiles = { UserId: Guid; ProfileIDs: Guid list }
+  
+  let usersProfilesByRelation () =
+    async {
+      let! pairs =
+        query { for r in custCtx().Dbo.UsersApplicationFunctionProfiles do select (r.UserId, r.FunctionProfileCode) }
+        |> List.executeQueryAsync
+      return pairs |> Utils.toMap
+    }
