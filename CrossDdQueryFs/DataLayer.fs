@@ -1,6 +1,7 @@
 ﻿module DataLayer
 
 open System
+open System.Transactions
 open CrossDdQueryFs
 
 // Data models
@@ -98,12 +99,15 @@ module Repository =
   
   let setUsersProfiles (up: Map<Guid, Guid list>) =
     let setUsersProfilesChunk (userProfiles: Map<Guid, Guid list>) =
-      let ctx = custCtx()
-      let toRelations userID profileIDs =
-          profileIDs
-          |> List.fold (fun acc profileID -> ctx.Dbo.UsersApplicationFunctionProfiles.``Create(FunctionProfileCode, UserId)``(profileID, userID) :: acc) []
       async {
+        let ctx = custCtx()
+        let toRelations userID profileIDs =
+            profileIDs
+            |> List.fold (fun acc profileID -> ctx.Dbo.UsersApplicationFunctionProfiles.``Create(FunctionProfileCode, UserId)``(profileID, userID) :: acc) []
         let userIDs = userProfiles |> Map.fold (fun acc key _ -> key :: acc) [] |> List.toArray
+        let mutable options = TransactionOptions()
+        options.Timeout <- TimeSpan.FromMinutes 10.0
+        use t = new TransactionScope(TransactionScopeOption.Required, options, TransactionScopeAsyncFlowOption.Enabled)
         let! settings =
           query {
             for s in ctx.Dbo.UserSettings do
@@ -119,13 +123,16 @@ module Repository =
         let! _ = ctx.SubmitUpdatesAsync()
         let newRelations = userProfiles |> Map.fold (fun acc userID profileIDs -> acc |> List.append (toRelations userID profileIDs) ) []
         let! _ = ctx.SubmitUpdatesAsync()
+        t.Complete()
+        printfn "Completed one transaction"
         return (settings, existingRelations, newRelations |> List.map (fun r -> (r.UserId, r.FunctionProfileCode)))
       }
     async {
+      printfn "Total of %i" up.Count
       let! results =
         up
-        |> Utils.chunkMap 1000
+        |> Utils.chunkMap 2000
         |> List.map (setUsersProfilesChunk)
-        |> Async.Parallel
+        |> Async.Sequential
       return results |> Utils.appendTupleList
     }
