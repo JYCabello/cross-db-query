@@ -89,7 +89,10 @@ module Repository =
           where (up.FunctionProfileCode.IsSome)
           select (up.UserId, up.FunctionProfileCode.Value)
         } |> List.executeQueryAsync
-      return pairsFromProfile |> List.append pairsFromSettings |> Utils.collectToMap
+      return pairsFromProfile
+             |> List.append pairsFromSettings
+             |> List.distinct
+             |> Utils.collectToMap
     }
   open System.Linq
   
@@ -121,7 +124,7 @@ module Repository =
     async {
       let! results =
         up
-        |> Utils.chunkMap 150
+        |> Utils.chunkMap 500
         |> List.map (setUsersProfilesChunk)
         |> Async.Parallel
       return
