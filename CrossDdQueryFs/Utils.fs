@@ -69,9 +69,9 @@ let appendTo (key, value) (d: Map<'a,'b list>) =
 let collectToMap (l: ('a * 'b) list) =
   List.fold (fun acc t -> appendTo t acc) (emptyMap()) l
 
-let chunkMap size (m: Map<'a, 'b list>) =
+let chunkMap size map =
   let a =
-    Map.fold (fun acc key value -> (key, value) :: acc) [] m
+    Map.fold (fun acc key value -> (key, value) :: acc) [] map
   let b =
     List.chunkBySize size a
   b
@@ -85,3 +85,13 @@ let chunkMap size (m: Map<'a, 'b list>) =
         )
         (emptyMap())
     )
+
+let appendTupleList tupleList =
+  tupleList
+  |> Seq.fold
+    (fun acc elm ->
+      let (elmA, elmB, elmC) = elm
+      let (accA, accB, accC) = acc
+      ((elmA |> List.append accA), (elmB |> List.append accB), (elmC |> List.append accC))
+    )
+    ([],[],[])

@@ -119,21 +119,13 @@ module Repository =
         let! _ = ctx.SubmitUpdatesAsync()
         let newRelations = userProfiles |> Map.fold (fun acc userID profileIDs -> acc |> List.append (toRelations userID profileIDs) ) []
         let! _ = ctx.SubmitUpdatesAsync()
-        return (settings, existingRelations, newRelations)
+        return (settings, existingRelations, newRelations |> List.map (fun r -> (r.UserId, r.FunctionProfileCode)))
       }
     async {
       let! results =
         up
-        |> Utils.chunkMap 500
+        |> Utils.chunkMap 1000
         |> List.map (setUsersProfilesChunk)
         |> Async.Parallel
-      return
-        results
-        |> Seq.fold
-          (fun acc elm ->
-            let (elmA, elmB, elmC) = elm
-            let (accA, accB, accC) = acc
-            ((elmA |> List.append accA), (elmB |> List.append accB), (elmC |> List.append accC))
-          )
-          ([],[],[])
+      return results |> Utils.appendTupleList
     }
