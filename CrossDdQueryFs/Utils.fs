@@ -1,5 +1,7 @@
 ﻿module Utils
 
+open System
+
 type OptionBinding() =
   member this.Bind(option, fn) =
     match option with
@@ -54,13 +56,32 @@ let parallelTuple6 (async1, async2, async3, async4, async5, async6) =
     let! result6 = child6
     return (result1, result2, result3, result4, result5, result6)
   }
+  
+let emptyMap() = Map<'a, 'b list> []
+
+let appendTo (key, value) (d: Map<'a,'b list>) =
+  let current =
+    match d.TryGetValue(key) with
+      | true, value -> value
+      | false, _ -> []
+  d.Add(key, value :: current)
 
 let collectToMap (l: ('a * 'b) list) =
-  let empty = Map<'a, 'b list> []
-  let appendTo (key, value) (d: Map<'a,'b list>) =
-    let current =
-      match d.TryGetValue(key) with
-        | true, value -> value
-        | false, _ -> []
-    d.Add(key, value :: current)
-  List.fold (fun acc t -> appendTo t acc) empty l
+  List.fold (fun acc t -> appendTo t acc) (emptyMap()) l
+
+let chunkMap size (m: Map<'a, 'b list>) =
+  let a =
+    Map.fold (fun acc key value -> (key, value) :: acc) [] m
+  let b =
+    List.chunkBySize size a
+  b
+  |> List.map
+    (fun ll ->
+      ll
+      |> List.fold
+        (fun (acc: Map<'a, 'b list>) l ->
+          let (key, values) = l
+          acc.Add(key, values)
+        )
+        (emptyMap())
+    )

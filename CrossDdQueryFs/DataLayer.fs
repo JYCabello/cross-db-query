@@ -77,10 +77,60 @@ module Repository =
 
   type UserWithProfiles = { UserId: Guid; ProfileIDs: Guid list }
   
-  let usersProfilesByRelation () =
+  let usersProfilesTotal () =
+    let ctx = custCtx()
     async {
-      let! pairs =
-        query { for r in custCtx().Dbo.UsersApplicationFunctionProfiles do select (r.UserId, r.FunctionProfileCode) }
+      let! pairsFromProfile =
+        query { for r in ctx.Dbo.UsersApplicationFunctionProfiles do select (r.UserId, r.FunctionProfileCode) }
         |> List.executeQueryAsync
-      return pairs |> Utils.collectToMap
+      let! pairsFromSettings =
+        query {
+          for up in ctx.Dbo.UserSettings do
+          where (up.FunctionProfileCode.IsSome)
+          select (up.UserId, up.FunctionProfileCode.Value)
+        } |> List.executeQueryAsync
+      return pairsFromProfile |> List.append pairsFromSettings |> Utils.collectToMap
+    }
+  open System.Linq
+  
+  let setUsersProfiles (up: Map<Guid, Guid list>) =
+    let setUsersProfilesChunk (userProfiles: Map<Guid, Guid list>) =
+      let ctx = custCtx()
+      let toRelations userID profileIDs =
+          profileIDs
+          |> List.fold (fun acc profileID -> ctx.Dbo.UsersApplicationFunctionProfiles.``Create(FunctionProfileCode, UserId)``(profileID, userID) :: acc) []
+      async {
+        let userIDs = userProfiles |> Map.fold (fun acc key _ -> key :: acc) [] |> List.toArray
+        let! settings =
+          query {
+            for s in ctx.Dbo.UserSettings do
+            where (userIDs.Contains(s.UserId))
+          } |> List.executeQueryAsync
+        settings |> List.iter (fun s -> s.FunctionProfileCode <- None)
+        let! existingRelations =
+          query {
+            for uafp in ctx.Dbo.UsersApplicationFunctionProfiles do
+            where (userIDs.Contains(uafp.UserId))
+          } |> List.executeQueryAsync
+        existingRelations |> List.iter (fun r -> r.Delete())
+        let! _ = ctx.SubmitUpdatesAsync()
+        let newRelations = userProfiles |> Map.fold (fun acc userID profileIDs -> acc |> List.append (toRelations userID profileIDs) ) []
+        let! _ = ctx.SubmitUpdatesAsync()
+        return (settings, existingRelations, newRelations)
+      }
+    async {
+      let! results =
+        up
+        |> Utils.chunkMap 150
+        |> List.map (setUsersProfilesChunk)
+        |> Async.Parallel
+      return
+        results
+        |> Seq.fold
+          (fun acc elm ->
+            let (elmA, elmB, elmC) = elm
+            let (accA, accB, accC) = acc
+            ((elmA |> List.append accA), (elmB |> List.append accB), (elmC |> List.append accC))
+          )
+          ([],[],[])
     }
