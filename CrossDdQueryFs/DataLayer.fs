@@ -105,9 +105,6 @@ module Repository =
             profileIDs
             |> List.fold (fun acc profileID -> ctx.Dbo.UsersApplicationFunctionProfiles.``Create(FunctionProfileCode, UserId)``(profileID, userID) :: acc) []
         let userIDs = userProfiles |> Map.fold (fun acc key _ -> key :: acc) [] |> List.toArray
-        let mutable options = TransactionOptions()
-        options.Timeout <- TimeSpan.FromMinutes 10.0
-        use trx = new TransactionScope(TransactionScopeOption.Required, options, TransactionScopeAsyncFlowOption.Enabled)
         let! settings =
           query {
             for s in ctx.Dbo.UserSettings do
@@ -119,20 +116,26 @@ module Repository =
             for uafp in ctx.Dbo.UsersApplicationFunctionProfiles do
             where (userIDs.Contains(uafp.UserId))
           } |> List.executeQueryAsync
-        existingRelations |> List.iter (fun r -> r.Delete())
+        let newRelations =
+          userProfiles
+          |> Map.filter
+            (fun userID profileIDs ->
+                  existingRelations
+                  |> List.exists (fun r -> r.UserId = userID && profileIDs |> List.exists (fun pid -> pid = r.FunctionProfileCode))
+                  |> not
+            )
+          |> Map.fold (fun acc userID profileIDs -> acc |> List.append (toRelations userID profileIDs) ) []
         let! _ = ctx.SubmitUpdatesAsync()
-        let newRelations = userProfiles |> Map.fold (fun acc userID profileIDs -> acc |> List.append (toRelations userID profileIDs) ) []
-        let! _ = ctx.SubmitUpdatesAsync()
-        trx.Complete()
         printfn "Completed one transaction"
         return (settings, existingRelations, newRelations |> List.map (fun r -> (r.UserId, r.FunctionProfileCode)))
       }
     async {
-      printfn "Total of %i" up.Count
+      let chunkSize = 250
+      printfn "Total of %i, iterating on %i batches" up.Count (up.Count / chunkSize)
       let! results =
         up
-        |> Utils.chunkMap 2000
-        |> List.map (setUsersProfilesChunk)
-        |> Async.Sequential
+        |> Utils.chunkMap chunkSize
+        |> List.map setUsersProfilesChunk
+        |> (fun c -> Async.Parallel (c, 5))
       return results |> Utils.appendTupleList
     }
