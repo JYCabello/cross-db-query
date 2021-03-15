@@ -107,7 +107,7 @@ module Repository =
         let userIDs = userProfiles |> Map.fold (fun acc key _ -> key :: acc) [] |> List.toArray
         let mutable options = TransactionOptions()
         options.Timeout <- TimeSpan.FromMinutes 10.0
-        use t = new TransactionScope(TransactionScopeOption.Required, options, TransactionScopeAsyncFlowOption.Enabled)
+        use trx = new TransactionScope(TransactionScopeOption.Required, options, TransactionScopeAsyncFlowOption.Enabled)
         let! settings =
           query {
             for s in ctx.Dbo.UserSettings do
@@ -123,7 +123,7 @@ module Repository =
         let! _ = ctx.SubmitUpdatesAsync()
         let newRelations = userProfiles |> Map.fold (fun acc userID profileIDs -> acc |> List.append (toRelations userID profileIDs) ) []
         let! _ = ctx.SubmitUpdatesAsync()
-        t.Complete()
+        trx.Complete()
         printfn "Completed one transaction"
         return (settings, existingRelations, newRelations |> List.map (fun r -> (r.UserId, r.FunctionProfileCode)))
       }
