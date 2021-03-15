@@ -82,5 +82,5 @@ module Repository =
       let! pairs =
         query { for r in custCtx().Dbo.UsersApplicationFunctionProfiles do select (r.UserId, r.FunctionProfileCode) }
         |> List.executeQueryAsync
-      return pairs |> Utils.toMap
+      return pairs |> Utils.collectToMap
     }
