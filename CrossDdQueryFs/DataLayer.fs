@@ -83,7 +83,7 @@ module Repository =
     async {
       let! pairsFromProfile =
         query { for r in ctx.Dbo.UsersApplicationFunctionProfiles do select (r.UserId, r.FunctionProfileCode) }
-        |> List.executeQueryAsync
+          |> List.executeQueryAsync
       let! pairsFromSettings =
         query {
           for up in ctx.Dbo.UserSettings do
@@ -120,14 +120,14 @@ module Repository =
         let onlyNotYetAssignedProfiles =
           (fun userID profileIDs ->
             existingRelations
-            |> List.exists (fun r -> r.UserId = userID && profileIDs |> List.exists (fun pid -> pid = r.FunctionProfileCode))
-            |> not
+              |> List.exists (fun r -> r.UserId = userID && profileIDs |> List.exists (fun pid -> pid = r.FunctionProfileCode))
+              |> not
           )
         let newRelations =
           userProfiles
-          |> Map.map (fun _ pIDs -> pIDs |> onlyExistingProfiles)
-          |> Map.filter onlyNotYetAssignedProfiles
-          |> Map.fold (fun acc userID profileIDs -> acc |> List.append (toRelations userID profileIDs) ) []
+            |> Map.map (fun _ pIDs -> pIDs |> onlyExistingProfiles)
+            |> Map.filter onlyNotYetAssignedProfiles
+            |> Map.fold (fun acc userID profileIDs -> acc |> List.append (toRelations userID profileIDs) ) []
         let! _ = ctx.SubmitUpdatesAsync()
         printfn "Completed one transaction"
         return (settings, existingRelations, newRelations |> List.map (fun r -> (r.UserId, r.FunctionProfileCode)))
