@@ -57,27 +57,29 @@ module ParallelUtils =
       return (result1, result2, result3, result4, result5, result6)
     }
 
-let emptyMap() = Map<'a, 'b list> []
+module MapUtils =
+  let emptyMap() = Map<'a, 'b list> []
 
-let appendTo (key, value) (d: Map<'a,'b list>) =
-  let current =
-    match d.TryGetValue(key) with
-      | true, value -> value
-      | false, _ -> []
-  d.Add(key, value :: current)
+  let appendTo (key, value) (d: Map<'a,'b list>) =
+    let current =
+      match d.TryGetValue(key) with
+        | true, value -> value
+        | false, _ -> []
+    d.Add(key, value :: current)
 
-let collectToMap (l: ('a * 'b) list) =
-  List.fold (fun acc t -> appendTo t acc) (emptyMap()) l
+  let collectToMap (l: ('a * 'b) list) =
+    List.fold (fun acc t -> appendTo t acc) (emptyMap()) l
 
-let chunkMap size map =
-  Map.fold (fun acc key value -> (key, value) :: acc) [] map
-  |> List.chunkBySize size
-  |> List.map (fun ll -> ll |> List.fold (fun (acc: Map<'a, 'b list>) -> acc.Add) (emptyMap()))
+  let chunkMap size map =
+    Map.fold (fun acc key value -> (key, value) :: acc) [] map
+    |> List.chunkBySize size
+    |> List.map (fun ll -> ll |> List.fold (fun (acc: Map<'a, 'b list>) -> acc.Add) (emptyMap()))
 
-let appendTupleList tupleList =
-  tupleList
-  |> Seq.fold
-    (fun (accA, accB, accC) (elmA, elmB, elmC) ->
-      ((elmA |> List.append accA), (elmB |> List.append accB), (elmC |> List.append accC))
-    )
-    ([],[],[])
+module ListUtils =
+  let appendTupleList tupleList =
+    tupleList
+    |> Seq.fold
+      (fun (accA, accB, accC) (elmA, elmB, elmC) ->
+        ((elmA |> List.append accA), (elmB |> List.append accB), (elmC |> List.append accC))
+      )
+      ([],[],[])

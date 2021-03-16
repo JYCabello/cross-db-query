@@ -2,6 +2,7 @@
 
 open System
 open CrossDdQueryFs
+open Utils
 
 // Data models
 module DataModels =
@@ -92,7 +93,7 @@ module Repository =
       return pairsFromProfile
              |> List.append pairsFromSettings
              |> List.distinct
-             |> Utils.collectToMap
+             |> MapUtils.collectToMap
     }
   open System.Linq
   
@@ -133,8 +134,8 @@ module Repository =
       printfn "Total of %i, iterating on %i batches" up.Count (up.Count / chunkSize)
       let! results =
         up
-        |> Utils.chunkMap chunkSize
+        |> MapUtils.chunkMap chunkSize
         |> List.map setUsersProfilesChunk
         |> (fun c -> Async.Parallel (c, 5))
-      return results |> Utils.appendTupleList
+      return results |> ListUtils.appendTupleList
     }
