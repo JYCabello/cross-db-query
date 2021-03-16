@@ -77,5 +77,7 @@ let chunkMap size map =
 let appendTupleList tupleList =
   tupleList
   |> Seq.fold
-    (fun (accA, accB, accC) (elmA, elmB, elmC) -> ((elmA |> List.append accA), (elmB |> List.append accB), (elmC |> List.append accC)))
+    (fun (accA, accB, accC) (elmA, elmB, elmC) ->
+      ((elmA |> List.append accA), (elmB |> List.append accB), (elmC |> List.append accC))
+    )
     ([],[],[])
