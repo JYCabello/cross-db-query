@@ -60,7 +60,7 @@ let toDelinquent userProfileRows roleProfileRows (allProfiles: Profile list) (al
     ProfileId = user.ProfileId |> Option.map (sprintf "%A") |> defaultUnknown
     ProfileName =
       user.ProfileId
-      |> Option.bind (fun pid -> allProfiles |> List.tryFind (fun p -> p.Id = pid))
+      |> Option.bind (fun pid -> allProfiles |> List.tryFind (fun p -> p.ID = pid))
       |> Option.map (fun p -> p.Name)
       |> defaultUnknown
     Email = user.Email |> defaultUnknown

@@ -7,7 +7,7 @@ open Utils
 // Data models
 module DataModels =
   type Role = { Id: Guid; Name: string }
-  type Profile = { Id: Guid; Name: string }
+  type Profile = { ID: Guid; Name: string }
   type UserRoleRow = { UserId: Guid; RoleName: string; Email: string option; RoleId: Guid }
   type RoleProfileRow = { ProfileId: Guid; RoleId: Guid }
   type UserProfile = { UserId: Guid; ProfileId: Guid option }
@@ -68,7 +68,7 @@ module Repository =
     query { for r in appCtx().Dbo.AspNetRoles do select (r |> toRole) } |> List.executeQueryAsync
 
   let profiles () =
-    query { for r in appCtx().Dbo.FunctionProfile do select { Id = r.Code; Name = r.Name } }
+    query { for r in appCtx().Dbo.FunctionProfile do select { ID = r.Code; Name = r.Name } }
     |> List.executeQueryAsync
 
   let usersProfilesBySettings () =
@@ -97,7 +97,7 @@ module Repository =
     }
   open System.Linq
   
-  let setUsersProfiles (up: Map<Guid, Guid list>) =
+  let setUsersProfiles (up: Map<Guid, Guid list>) (allProfiles: Profile list) =
     let setUsersProfilesChunk (userProfiles: Map<Guid, Guid list>) =
       async {
         let ctx = custCtx()
@@ -116,26 +116,29 @@ module Repository =
             for uafp in ctx.Dbo.UsersApplicationFunctionProfiles do
             where (userIDs.Contains(uafp.UserId))
           } |> List.executeQueryAsync
+        let onlyExistingProfiles = List.filter (fun pID -> allProfiles |> List.exists (fun p -> p.ID = pID))
+        let onlyNotYetAssignedProfiles =
+          (fun userID profileIDs ->
+            existingRelations
+            |> List.exists (fun r -> r.UserId = userID && profileIDs |> List.exists (fun pid -> pid = r.FunctionProfileCode))
+            |> not
+          )
         let newRelations =
           userProfiles
-          |> Map.filter
-            (fun userID profileIDs ->
-                  existingRelations
-                  |> List.exists (fun r -> r.UserId = userID && profileIDs |> List.exists (fun pid -> pid = r.FunctionProfileCode))
-                  |> not
-            )
+          |> Map.map (fun _ pIDs -> pIDs |> onlyExistingProfiles)
+          |> Map.filter onlyNotYetAssignedProfiles
           |> Map.fold (fun acc userID profileIDs -> acc |> List.append (toRelations userID profileIDs) ) []
         let! _ = ctx.SubmitUpdatesAsync()
         printfn "Completed one transaction"
         return (settings, existingRelations, newRelations |> List.map (fun r -> (r.UserId, r.FunctionProfileCode)))
       }
     async {
-      let chunkSize = 250
+      let chunkSize = 750
       printfn "Total of %i, iterating on %i batches" up.Count (up.Count / chunkSize)
       let! results =
         up
         |> MapUtils.chunkMap chunkSize
         |> List.map setUsersProfilesChunk
-        |> (fun c -> Async.Parallel (c, 5))
+        |> (fun c -> Async.Parallel (c, 10))
       return results |> ListUtils.appendTupleList
     }
