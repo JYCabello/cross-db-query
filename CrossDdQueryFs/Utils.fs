@@ -75,6 +75,14 @@ module MapUtils =
     >> List.chunkBySize size
     >> List.map (fun ll -> ll |> List.fold (fun (acc: Map<'a, 'b list>) -> acc.Add) (emptyMap()))
     
+  let toLines map =
+    let toDenormalizedTuples key = List.fold (fun acc value -> (key, value) :: acc) []
+    map
+    |> Map.fold (fun acc key values -> values |> toDenormalizedTuples key |> List.append acc) []
+    |> List.map (fun (key, value) -> (key.ToString(), value.ToString()))
+    |> (fun l -> ("UserID", "ProfileID") :: l)
+    |> List.map (fun (key, value) -> $"{key}, {value}")
+    
 module ListUtils =
   let appendTupleList tupleList =
     tupleList
