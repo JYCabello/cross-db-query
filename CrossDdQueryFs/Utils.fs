@@ -68,13 +68,13 @@ module MapUtils =
     d.Add(key, value :: current)
 
   let collectToMap (l: ('a * 'b) list) =
-    List.fold (fun acc t -> appendTo t acc) (emptyMap()) l
+    l |> List.fold (fun acc t -> appendTo t acc) (emptyMap())
 
-  let chunkMap size map =
-    Map.fold (fun acc key value -> (key, value) :: acc) [] map
-    |> List.chunkBySize size
-    |> List.map (fun ll -> ll |> List.fold (fun (acc: Map<'a, 'b list>) -> acc.Add) (emptyMap()))
-
+  let chunkMap size =
+    Map.fold (fun acc key value -> (key, value) :: acc) [] 
+    >> List.chunkBySize size
+    >> List.map (fun ll -> ll |> List.fold (fun (acc: Map<'a, 'b list>) -> acc.Add) (emptyMap()))
+    
 module ListUtils =
   let appendTupleList tupleList =
     tupleList
