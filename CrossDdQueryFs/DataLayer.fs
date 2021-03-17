@@ -97,14 +97,14 @@ module Repository =
     }
   open System.Linq
   
-  let setUsersProfiles (up: Map<Guid, Guid list>) (allProfiles: Profile list) =
-    let setUsersProfilesChunk (userProfiles: Map<Guid, Guid list>) =
+  let setUsersProfiles (userProfiles: Map<Guid, Guid list>) allProfiles =
+    let setUsersProfilesChunk (userProfilesChunk: Map<Guid, Guid list>) =
       async {
         let ctx = custCtx()
         let toRelations userID profileIDs =
             profileIDs
             |> List.fold (fun acc profileID -> ctx.Dbo.UsersApplicationFunctionProfiles.``Create(FunctionProfileCode, UserId)``(profileID, userID) :: acc) []
-        let userIDs = userProfiles |> Map.fold (fun acc key _ -> key :: acc) [] |> List.toArray
+        let userIDs = userProfilesChunk |> Map.fold (fun acc key _ -> key :: acc) [] |> List.toArray
         let! settings =
           query {
             for s in ctx.Dbo.UserSettings do
@@ -124,7 +124,7 @@ module Repository =
               |> not
           )
         let newRelations =
-          userProfiles
+          userProfilesChunk
             |> Map.map (fun _ pIDs -> pIDs |> onlyExistingProfiles)
             |> Map.filter onlyNotYetAssignedProfiles
             |> Map.fold (fun acc userID profileIDs -> acc |> List.append (toRelations userID profileIDs) ) []
@@ -134,11 +134,11 @@ module Repository =
       }
     async {
       let chunkSize = 750
-      printfn "Total of %i, iterating on %i batches" up.Count (up.Count / chunkSize)
+      printfn "Total of %i, iterating on %i batches" userProfiles.Count (userProfiles.Count / chunkSize)
       let! results =
-        up
+        userProfiles
         |> MapUtils.chunkMap chunkSize
         |> List.map setUsersProfilesChunk
         |> (fun c -> Async.Parallel (c, 10))
-      return results |> ListUtils.appendTupleList
+      return results |> ListUtils.appendTuple3List
     }
