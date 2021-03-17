@@ -140,5 +140,5 @@ module Repository =
         |> MapUtils.chunkMap chunkSize
         |> List.map setUsersProfilesChunk
         |> (fun c -> Async.Parallel (c, 10))
-      return results |> ListUtils.appendTuple3List
+      return results |> ListUtils.appendTupleList
     }

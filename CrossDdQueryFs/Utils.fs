@@ -11,52 +11,51 @@ module OptionUtils =
 
   let option = OptionBinding()
   
-module Parallel =
-  type Utils =
-    static member parallelTuple (async1, async2) =
-      async {
-        let! child1 = Async.StartChild (async1())
-        let! child2 = Async.StartChild (async2())
-        let! result1 = child1
-        let! result2 = child2
-        return (result1, result2)
-      }
+type Parallel =
+  static member tuple (async1, async2) =
+    async {
+      let! child1 = Async.StartChild (async1())
+      let! child2 = Async.StartChild (async2())
+      let! result1 = child1
+      let! result2 = child2
+      return (result1, result2)
+    }
 
-    static member parallelTuple (async1, async2, async3) =
-      async {
-        let! childTuple = Utils.parallelTuple (async1, async2) |> Async.StartChild
-        let! child3 = Async.StartChild (async3())
-        let! (result1, result2) = childTuple
-        let! result3 = child3
-        return (result1, result2, result3)
-      }
+  static member tuple (async1, async2, async3) =
+    async {
+      let! childTuple = Parallel.tuple (async1, async2) |> Async.StartChild
+      let! child3 = Async.StartChild (async3())
+      let! (result1, result2) = childTuple
+      let! result3 = child3
+      return (result1, result2, result3)
+    }
 
-    static member parallelTuple (async1, async2, async3, async4) =
-      async {
-        let! childTuple = Utils.parallelTuple (async1, async2, async3) |> Async.StartChild
-        let! child4 = Async.StartChild (async4())
-        let! (result1, result2, result3) = childTuple
-        let! result4 = child4
-        return (result1, result2, result3, result4)
-      }
+  static member tuple (async1, async2, async3, async4) =
+    async {
+      let! childTuple = Parallel.tuple (async1, async2, async3) |> Async.StartChild
+      let! child4 = Async.StartChild (async4())
+      let! (result1, result2, result3) = childTuple
+      let! result4 = child4
+      return (result1, result2, result3, result4)
+    }
 
-    static member parallelTuple (async1, async2, async3, async4, async5) =
-      async {
-        let! childTuple = Utils.parallelTuple (async1, async2, async3, async4) |> Async.StartChild
-        let! child5 = Async.StartChild (async5())
-        let! (result1, result2, result3, result4) = childTuple
-        let! result5 = child5
-        return (result1, result2, result3, result4, result5)
-      }
+  static member tuple (async1, async2, async3, async4, async5) =
+    async {
+      let! childTuple = Parallel.tuple (async1, async2, async3, async4) |> Async.StartChild
+      let! child5 = Async.StartChild (async5())
+      let! (result1, result2, result3, result4) = childTuple
+      let! result5 = child5
+      return (result1, result2, result3, result4, result5)
+    }
 
-    static member parallelTuple (async1, async2, async3, async4, async5, async6) =
-      async {
-        let! childTuple = Utils.parallelTuple (async1, async2, async3, async4, async5) |> Async.StartChild
-        let! child6 = Async.StartChild (async6())
-        let! (result1, result2, result3, result4, result5) = childTuple
-        let! result6 = child6
-        return (result1, result2, result3, result4, result5, result6)
-      }
+  static member tuple (async1, async2, async3, async4, async5, async6) =
+    async {
+      let! childTuple = Parallel.tuple (async1, async2, async3, async4, async5) |> Async.StartChild
+      let! child6 = Async.StartChild (async6())
+      let! (result1, result2, result3, result4, result5) = childTuple
+      let! result6 = child6
+      return (result1, result2, result3, result4, result5, result6)
+    }
 
 module MapUtils =
   let emptyMap() = Map<'a, 'b list> []
@@ -84,8 +83,8 @@ module MapUtils =
       |> (fun l -> ("UserID", "ProfileID") :: l)
       |> List.map (fun (key, value) -> $"{key}, {value}")
     
-module ListUtils =
-  let appendTuple3List tupleList =
+type ListUtils =
+  static member appendTupleList tupleList =
     tupleList
       |> Seq.fold
         (fun (accA, accB, accC) (elmA, elmB, elmC) ->

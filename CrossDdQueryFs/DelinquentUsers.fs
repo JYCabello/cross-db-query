@@ -78,7 +78,7 @@ module R = Repository
 let program () =
   async {
     let! (userRoleRows, rolesPerProfile, userProfileRows, allProfiles, allRoles) =
-      Parallel.Utils.parallelTuple(R.usersRoles, R.rolesPerProfile, R.usersProfilesBySettings, R.profiles, R.roles)
+      Parallel.tuple (R.usersRoles, R.rolesPerProfile, R.usersProfilesBySettings, R.profiles, R.roles)
     let distinctUsers = toDistinctUsers userProfileRows userRoleRows
     let delinquentUsers =
       distinctUsers 
