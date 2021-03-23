@@ -1,9 +1,10 @@
 ﻿open System
 open CrossDdQueryFs
+open DataLayer
 
 [<EntryPoint>]
 let main _  =
-    Migration.program() |> Async.RunSynchronously
+    Repository.setDashboards () |> Async.RunSynchronously
     printf "Press a key to end"
     Console.ReadKey() |> ignore
     0

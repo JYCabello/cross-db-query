@@ -7,10 +7,11 @@ open Utils
 // Data models
 module DataModels =
   type Role = { Id: Guid; Name: string }
-  type Profile = { ID: Guid; Name: string }
+  type Profile = { ID: Guid; Name: string; DefaultDashboard: int }
   type UserRoleRow = { UserId: Guid; RoleName: string; Email: string option; RoleId: Guid }
   type RoleProfileRow = { ProfileId: Guid; RoleId: Guid }
-  type UserProfile = { UserId: Guid; ProfileId: Guid option }
+  type UserProfileRow = { UserId: Guid; ProfileId: Guid option }
+  type UserSettings = { UserId: Guid; Dashboard: int option; ProfileId: Guid option }
 
 module Repository =
   open DataModels
@@ -68,7 +69,7 @@ module Repository =
     query { for r in appCtx().Dbo.AspNetRoles do select (r |> toRole) } |> List.executeQueryAsync
 
   let profiles () =
-    query { for r in appCtx().Dbo.FunctionProfile do select { ID = r.Code; Name = r.Name } }
+    query { for r in appCtx().Dbo.FunctionProfile do select { ID = r.Code; Name = r.Name; DefaultDashboard = r.Dashboard } }
     |> List.executeQueryAsync
 
   let usersProfilesBySettings () =
@@ -128,7 +129,7 @@ module Repository =
             |> Map.map (fun _ pIDs -> pIDs |> onlyExistingProfiles)
             |> Map.filter onlyNotYetAssignedProfiles
             |> Map.fold (fun acc userID profileIDs -> acc |> List.append (toRelations userID profileIDs) ) []
-        let! _ = ctx.SubmitUpdatesAsync()
+        do! ctx.SubmitUpdatesAsync()
         printfn "Completed one transaction"
         return (settings, existingRelations, newRelations |> List.map (fun r -> (r.UserId, r.FunctionProfileCode)))
       }
@@ -141,4 +142,50 @@ module Repository =
         |> List.map setUsersProfilesChunk
         |> (fun c -> Async.Parallel (c, 10))
       return results |> ListUtils.appendTupleList
+    }
+    
+  let rec setDashboards () =
+    let ctx = custCtx()
+    async {
+      let! settings =
+        query {
+          for s in ctx.Dbo.UserSettings do
+          where (s.Dashboard = None)
+          take 500
+        } |> List.executeQueryAsync
+      let! profilesLinked = ctx.Dbo.UsersApplicationFunctionProfiles |> List.executeQueryAsync
+      let withProfileNoDashboard =
+        settings
+          |> List.map
+            (fun s ->
+              let profileID =
+                profilesLinked
+                  |> List.tryFind (fun p -> p.UserId = s.UserId)
+                  |> Option.map (fun p -> p.FunctionProfileCode)
+              { UserId = s.UserId
+                Dashboard = s.Dashboard
+                ProfileId = profileID }
+            )
+          |> List.filter (fun s -> s.Dashboard.IsNone && s.ProfileId.IsSome)
+      let! allProfiles = profiles ()
+      withProfileNoDashboard
+        |> List.iter
+          (fun s ->
+            let profile =
+              s.ProfileId
+              |> Option.bind
+                (fun pid ->
+                  allProfiles |> List.tryFind (fun p -> p.ID = pid)
+                )
+            profile
+              |> Option.iter
+                (fun p ->
+                  let setting = settings |> List.find (fun st -> st.UserId = s.UserId)
+                  setting.Dashboard <- p.DefaultDashboard |> Some
+                )
+          )
+      let updates = ctx.GetUpdates ()
+      do! ctx.SubmitUpdatesAsync ()
+      printfn "Completed one batch"
+      return! if (withProfileNoDashboard.Count () = 0) then (async { () }) else (setDashboards ())
     }

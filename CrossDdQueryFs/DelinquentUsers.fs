@@ -20,14 +20,14 @@ type DelinquentUser =
     ExtraRoles: string list
     MissingRoles: string list }
 
-let getProfileRoleIds (usersProfiles: UserProfile list) (rolesPerProfile: RoleProfileRow list) (user: UserWithRoles) =
+let getProfileRoleIds (usersProfiles: UserProfileRow list) (rolesPerProfile: RoleProfileRow list) (user: UserWithRoles) =
   OptionUtils.option {
     let! userProfile = usersProfiles |> List.tryFind (fun up -> up.UserId = user.Id) 
     let! profileID = userProfile.ProfileId
     return rolesPerProfile |> List.filter (fun rpp -> rpp.ProfileId = profileID) |> List.map (fun rpp -> rpp.RoleId)
   } |> Option.defaultValue []
 
-let getProfileId usersProfiles (u: UserRoleRow) =
+let getProfileId (usersProfiles: UserProfileRow list) (u: UserRoleRow) =
   usersProfiles 
     |> List.tryFind (fun up -> up.UserId = u.UserId) 
     |> Option.bind (fun up -> up.ProfileId)
@@ -37,7 +37,7 @@ let getRoles (userRoleRows: UserRoleRow list) (user: UserRoleRow) : Role list =
     |> List.filter (fun u -> u.UserId = user.UserId)
     |> List.map (fun u -> {Id= u.RoleId; Name= u.RoleName})
 
-let toDistinctUsers usersProfiles (userRoleRows: UserRoleRow list) =
+let toDistinctUsers (usersProfiles: UserProfileRow list) (userRoleRows: UserRoleRow list) =
   userRoleRows
       |> List.distinctBy (fun u -> u.UserId)
       |> List.map (fun u -> {
