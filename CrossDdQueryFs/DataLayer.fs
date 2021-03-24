@@ -184,7 +184,7 @@ module Repository =
         let recordsToUpdate = ctx.GetUpdates () |> List.length
         do! ctx.SubmitUpdatesAsync ()
         printfn $"Completed batch number {page + 1} with {recordsToUpdate} update(s) done."
-        return! if (settings.Count () = 0) then (async { () }) else (go (page + 1) allProfiles)
+        return! if (settings.Count () < 500) then (async { () }) else (go (page + 1) allProfiles)
       }
     async {
       let! allProfiles = profiles ()
