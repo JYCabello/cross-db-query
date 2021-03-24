@@ -144,48 +144,50 @@ module Repository =
       return results |> ListUtils.appendTupleList
     }
     
-  let rec setDashboards () =
-    let ctx = custCtx()
-    async {
-      let! settings =
-        query {
-          for s in ctx.Dbo.UserSettings do
-          where (s.Dashboard = None)
-          take 500
-        } |> List.executeQueryAsync
-      let! profilesLinked = ctx.Dbo.UsersApplicationFunctionProfiles |> List.executeQueryAsync
-      let withProfileNoDashboard =
-        settings
-          |> List.map
+  let setDashboards () =
+    let batchSize = 500
+    let rec go page allProfiles =
+      let ctx = custCtx()
+      async {
+        let! settings =
+          query {
+            for s in ctx.Dbo.UserSettings do
+            sortBy (s.UserId)
+            skip (page * batchSize)
+            take batchSize
+          } |> List.executeQueryAsync
+        let! profilesLinked = ctx.Dbo.UsersApplicationFunctionProfiles |> List.executeQueryAsync
+        let withProfileNoDashboard =
+          settings
+            |> List.map
+              (fun s ->
+                let profileID =
+                  profilesLinked
+                    |> List.tryFind (fun p -> p.UserId = s.UserId)
+                    |> Option.map (fun p -> p.FunctionProfileCode)
+                { UserId = s.UserId
+                  Dashboard = s.Dashboard
+                  ProfileId = profileID }
+              )
+            |> List.filter (fun s -> s.Dashboard.IsNone && s.ProfileId.IsSome)
+        withProfileNoDashboard
+          |> List.iter
             (fun s ->
-              let profileID =
-                profilesLinked
-                  |> List.tryFind (fun p -> p.UserId = s.UserId)
-                  |> Option.map (fun p -> p.FunctionProfileCode)
-              { UserId = s.UserId
-                Dashboard = s.Dashboard
-                ProfileId = profileID }
+              let dashboard =
+                s.ProfileId
+                |> Option.bind (fun pid -> allProfiles |> List.tryFind (fun p -> p.ID = pid))
+                |> Option.map (fun p -> p.DefaultDashboard)
+                |> Option.defaultValue 0
+              let setting = settings |> List.find (fun st -> st.UserId = s.UserId)
+              setting.Dashboard <- dashboard |> Some
             )
-          |> List.filter (fun s -> s.Dashboard.IsNone && s.ProfileId.IsSome)
+        let recordsToUpdate = ctx.GetUpdates () |> List.length
+        do! ctx.SubmitUpdatesAsync ()
+        printfn $"Completed batch number {page + 1} with {recordsToUpdate} update(s) done."
+        return! if (settings.Count () = 0) then (async { () }) else (go (page + 1) allProfiles)
+      }
+    async {
       let! allProfiles = profiles ()
-      withProfileNoDashboard
-        |> List.iter
-          (fun s ->
-            let profile =
-              s.ProfileId
-              |> Option.bind
-                (fun pid ->
-                  allProfiles |> List.tryFind (fun p -> p.ID = pid)
-                )
-            profile
-              |> Option.iter
-                (fun p ->
-                  let setting = settings |> List.find (fun st -> st.UserId = s.UserId)
-                  setting.Dashboard <- p.DefaultDashboard |> Some
-                )
-          )
-      let updates = ctx.GetUpdates ()
-      do! ctx.SubmitUpdatesAsync ()
-      printfn "Completed one batch"
-      return! if (withProfileNoDashboard.Count () = 0) then (async { () }) else (setDashboards ())
+      return! go 0 allProfiles
     }
+    
