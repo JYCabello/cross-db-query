@@ -17,6 +17,7 @@
     <Compile Include="DataLayer.fs" />
     <Compile Include="DelinquentUsers.fs" />
     <Compile Include="MigrationMultiProfile.fs" />
+    <Compile Include="MigrationDashboard.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

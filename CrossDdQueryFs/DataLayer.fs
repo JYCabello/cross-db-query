@@ -97,6 +97,8 @@ module Repository =
              |> MapUtils.collectToMap
     }
   open System.Linq
+
+  
   
   let setUsersProfiles (userProfiles: Map<Guid, Guid list>) allProfiles =
     let setUsersProfilesChunk (userProfilesChunk: Map<Guid, Guid list>) =
@@ -118,12 +120,10 @@ module Repository =
             where (userIDs.Contains(uafp.UserId))
           } |> List.executeQueryAsync
         let onlyExistingProfiles = List.filter (fun pID -> allProfiles |> List.exists (fun p -> p.ID = pID))
-        let onlyNotYetAssignedProfiles =
-          (fun userID profileIDs ->
-            existingRelations
-              |> List.exists (fun r -> r.UserId = userID && profileIDs |> List.exists (fun pid -> pid = r.FunctionProfileCode))
-              |> not
-          )
+        let onlyNotYetAssignedProfiles userID profileIDs =
+          existingRelations
+            |> List.exists (fun r -> r.UserId = userID && profileIDs |> List.exists (fun pid -> pid = r.FunctionProfileCode))
+            |> not
         let newRelations =
           userProfilesChunk
             |> Map.map (fun _ pIDs -> pIDs |> onlyExistingProfiles)
