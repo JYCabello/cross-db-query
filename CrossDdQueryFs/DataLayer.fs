@@ -143,6 +143,9 @@ module Repository =
       return results |> ListUtils.appendTupleList
     }
     
+  let settingsCount () =
+    async { return query { for s in custCtx().Dbo.UserSettings do count } } 
+    
   let dashboardsToSet page batchSize allProfiles =
     async {
       let ctx = custCtx()
@@ -184,6 +187,28 @@ module Repository =
             |> List.map toUserSettings
             |> List.filter (fun s -> s.Dashboard.IsNone && s.ProfileId.IsSome)
             |> List.choose withDashboardID
+    }
+  
+  let setDb (dashboardsToSet: UserSetDashBoard list) =
+    let ctx = custCtx()
+    let ids = dashboardsToSet |> List.map (fun dts -> dts.UserId) |> List.toArray
+    async {
+      let! settings =
+        query {
+          for s in ctx.Dbo.UserSettings do
+          where (ids.Contains(s.UserId))
+        } |> List.executeQueryAsync
+
+      dashboardsToSet
+        |> List.choose
+             (fun dts ->
+                settings
+                  |> List.tryFind (fun s -> s.UserId = dts.UserId)
+                  |> Option.map (fun s -> (dts, s))
+             )
+        |> List.iter (fun (dts, s) -> s.Dashboard <- dts.Dashboard |> Some)
+
+      return! ctx.SubmitUpdatesAsync ()
     }
 
   let setDashboards () =
