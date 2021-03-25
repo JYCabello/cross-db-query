@@ -104,6 +104,7 @@ module Repository =
     let setUsersProfilesChunk (userProfilesChunk: Map<Guid, Guid list>) =
       async {
         let ctx = custCtx()
+        printfn "Started processing chunk %i" (userProfilesChunk.GetHashCode())
         let toRelations userID profileIDs =
             profileIDs
             |> List.fold (fun acc profileID -> ctx.Dbo.UsersApplicationFunctionProfiles.``Create(FunctionProfileCode, UserId)``(profileID, userID) :: acc) []
@@ -130,7 +131,7 @@ module Repository =
             |> Map.filter onlyNotYetAssignedProfiles
             |> Map.fold (fun acc userID profileIDs -> acc |> List.append (toRelations userID profileIDs) ) []
         do! ctx.SubmitUpdatesAsync()
-        printfn "Completed one transaction"
+        printfn "Completed processing chunk %i" (userProfilesChunk.GetHashCode())
         return (settings, existingRelations, newRelations |> List.map (fun r -> (r.UserId, r.FunctionProfileCode)))
       }
     async {
@@ -138,9 +139,9 @@ module Repository =
       printfn "Total of %i, iterating on %i batches" userProfiles.Count (userProfiles.Count / chunkSize)
       let! results =
         userProfiles
-        |> MapUtils.chunkMap chunkSize
-        |> List.map setUsersProfilesChunk
-        |> (fun c -> Async.Parallel (c, 10))
+          |> MapUtils.chunkMap chunkSize
+          |> List.map setUsersProfilesChunk
+          |> (fun c -> Async.Parallel (c, 10))
       return results |> ListUtils.appendTupleList
     }
 
@@ -174,12 +175,12 @@ module Repository =
           Dashboard = s.Dashboard
           ProfileId = profileID }
 
-      let withDashboardID (s: UserSettings) =
+      let withDashboardID s =
         s.ProfileId
           |> Option.bind
                (fun pId ->
                 allProfiles
-                  |> List.tryFind (fun (p: Profile) -> p.ID = pId)
+                  |> List.tryFind (fun p -> p.ID = pId)
                   |> Option.map (fun p -> { UserId = s.UserId; Dashboard = p.DefaultDashboard })
               )
 
