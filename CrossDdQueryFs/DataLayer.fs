@@ -97,8 +97,9 @@ module Repository =
              |> List.distinct
              |> MapUtils.collectToMap
     }
+
   open System.Linq
-  
+
   let setUsersProfiles (userProfiles: Map<Guid, Guid list>) allProfiles =
     let setUsersProfilesChunk (userProfilesChunk: Map<Guid, Guid list>) =
       async {
@@ -142,10 +143,10 @@ module Repository =
         |> (fun c -> Async.Parallel (c, 10))
       return results |> ListUtils.appendTupleList
     }
-    
+
   let settingsCount () =
     async { return query { for s in custCtx().Dbo.UserSettings do count } } 
-    
+
   let dashboardsToSet page batchSize allProfiles =
     async {
       let ctx = custCtx()
@@ -175,24 +176,25 @@ module Repository =
 
       let withDashboardID (s: UserSettings) =
         s.ProfileId
-        |> Option.bind
-             (fun pId ->
-              allProfiles
-                |> List.tryFind (fun (p: Profile) -> p.ID = pId)
-                |> Option.map (fun p -> { UserId = s.UserId; Dashboard = p.DefaultDashboard })
-            )
-
+          |> Option.bind
+               (fun pId ->
+                allProfiles
+                  |> List.tryFind (fun (p: Profile) -> p.ID = pId)
+                  |> Option.map (fun p -> { UserId = s.UserId; Dashboard = p.DefaultDashboard })
+              )
+      printfn "Finished processing of page %i" page
       return
           settings
             |> List.map toUserSettings
             |> List.filter (fun s -> s.Dashboard.IsNone && s.ProfileId.IsSome)
             |> List.choose withDashboardID
     }
-  
+
   let setDb (dashboardsToSet: UserSetDashBoard list) =
     let ctx = custCtx()
     let ids = dashboardsToSet |> List.map (fun dts -> dts.UserId) |> List.toArray
     async {
+      printfn "Starting processing of page of dashboards %i" (dashboardsToSet.GetHashCode())
       let! settings =
         query {
           for s in ctx.Dbo.UserSettings do
@@ -208,53 +210,6 @@ module Repository =
              )
         |> List.iter (fun (dts, s) -> s.Dashboard <- dts.Dashboard |> Some)
 
-      return! ctx.SubmitUpdatesAsync ()
+      do! ctx.SubmitUpdatesAsync ()
+      printfn "Finished processing of page of dashboards %i" (dashboardsToSet.GetHashCode())
     }
-
-  let setDashboards () =
-    let batchSize = 500
-    let rec go page allProfiles =
-      let ctx = custCtx()
-      async {
-        let! settings =
-          query {
-            for s in ctx.Dbo.UserSettings do
-            sortBy (s.UserId)
-            skip (page * batchSize)
-            take batchSize
-          } |> List.executeQueryAsync
-        let! profilesLinked = ctx.Dbo.UsersApplicationFunctionProfiles |> List.executeQueryAsync
-        let withProfileNoDashboard =
-          settings
-            |> List.map
-              (fun s ->
-                let profileID =
-                  profilesLinked
-                    |> List.tryFind (fun p -> p.UserId = s.UserId)
-                    |> Option.map (fun p -> p.FunctionProfileCode)
-                { UserId = s.UserId
-                  Dashboard = s.Dashboard
-                  ProfileId = profileID }
-              )
-            |> List.filter (fun s -> s.Dashboard.IsNone && s.ProfileId.IsSome)
-        withProfileNoDashboard
-          |> List.iter
-            (fun s ->
-              let dashboard =
-                s.ProfileId
-                |> Option.bind (fun pid -> allProfiles |> List.tryFind (fun p -> p.ID = pid))
-                |> Option.map (fun p -> p.DefaultDashboard)
-                |> Option.defaultValue 0
-              let setting = settings |> List.find (fun st -> st.UserId = s.UserId)
-              setting.Dashboard <- dashboard |> Some
-            )
-        let recordsToUpdate = ctx.GetUpdates () |> List.length
-        do! ctx.SubmitUpdatesAsync ()
-        printfn $"Completed batch number {page + 1} with {recordsToUpdate} update(s) done."
-        return! if (settings.Count () < batchSize) then (async { () }) else (go (page + 1) allProfiles)
-      }
-    async {
-      let! allProfiles = profiles ()
-      return! go 0 allProfiles
-    }
-    
