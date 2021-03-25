@@ -10,8 +10,9 @@ module DataModels =
   type Profile = { ID: Guid; Name: string; DefaultDashboard: int }
   type UserRoleRow = { UserId: Guid; RoleName: string; Email: string option; RoleId: Guid }
   type RoleProfileRow = { ProfileId: Guid; RoleId: Guid }
-  type UserProfileRow = { UserId: Guid; ProfileId: Guid option }
+  type UserProfileRow = { UserId: Guid; PossibleProfileId: Guid option }
   type UserSettings = { UserId: Guid; Dashboard: int option; ProfileId: Guid option }
+  type UserSetDashBoard = { UserId: Guid; Dashboard: int }
 
 module Repository =
   open DataModels
@@ -74,7 +75,7 @@ module Repository =
 
   let usersProfilesBySettings () =
     query {
-      for up in custCtx().Dbo.UserSettings do select { ProfileId = up.FunctionProfileCode; UserId = up.UserId }
+      for up in custCtx().Dbo.UserSettings do select { PossibleProfileId = up.FunctionProfileCode; UserId = up.UserId }
     } |> List.executeQueryAsync
 
   type UserWithProfiles = { UserId: Guid; ProfileIDs: Guid list }
@@ -97,8 +98,6 @@ module Repository =
              |> MapUtils.collectToMap
     }
   open System.Linq
-
-  
   
   let setUsersProfiles (userProfiles: Map<Guid, Guid list>) allProfiles =
     let setUsersProfilesChunk (userProfilesChunk: Map<Guid, Guid list>) =
@@ -144,6 +143,49 @@ module Repository =
       return results |> ListUtils.appendTupleList
     }
     
+  let dashboardsToSet page batchSize allProfiles =
+    async {
+      let ctx = custCtx()
+      let! settings =
+        query {
+          for s in ctx.Dbo.UserSettings do
+          sortBy (s.UserId)
+          skip (page * batchSize)
+          take batchSize
+        } |> List.executeQueryAsync
+
+      let! profilesLinked =
+        let userIDs = settings |> List.map (fun s -> s.UserId) |> List.toArray
+        query {
+          for uafp in ctx.Dbo.UsersApplicationFunctionProfiles do
+          where (userIDs.Contains(uafp.UserId))
+        } |> List.executeQueryAsync
+
+      let toUserSettings (s: CustomerDb.dataContext.``dbo.UserSettingsEntity``) =
+        let profileID =
+          profilesLinked
+            |> List.tryFind (fun p -> p.UserId = s.UserId)
+            |> Option.map (fun p -> p.FunctionProfileCode)
+        { UserId = s.UserId
+          Dashboard = s.Dashboard
+          ProfileId = profileID }
+
+      let withDashboardID (s: UserSettings) =
+        s.ProfileId
+        |> Option.bind
+             (fun pId ->
+              allProfiles
+                |> List.tryFind (fun (p: Profile) -> p.ID = pId)
+                |> Option.map (fun p -> { UserId = s.UserId; Dashboard = p.DefaultDashboard })
+            )
+
+      return
+          settings
+            |> List.map toUserSettings
+            |> List.filter (fun s -> s.Dashboard.IsNone && s.ProfileId.IsSome)
+            |> List.choose withDashboardID
+    }
+
   let setDashboards () =
     let batchSize = 500
     let rec go page allProfiles =

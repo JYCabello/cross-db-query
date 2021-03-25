@@ -23,14 +23,14 @@ type DelinquentUser =
 let getProfileRoleIds (usersProfiles: UserProfileRow list) (rolesPerProfile: RoleProfileRow list) (user: UserWithRoles) =
   OptionUtils.option {
     let! userProfile = usersProfiles |> List.tryFind (fun up -> up.UserId = user.Id) 
-    let! profileID = userProfile.ProfileId
+    let! profileID = userProfile.PossibleProfileId
     return rolesPerProfile |> List.filter (fun rpp -> rpp.ProfileId = profileID) |> List.map (fun rpp -> rpp.RoleId)
   } |> Option.defaultValue []
 
 let getProfileId (usersProfiles: UserProfileRow list) (u: UserRoleRow) =
   usersProfiles 
     |> List.tryFind (fun up -> up.UserId = u.UserId) 
-    |> Option.bind (fun up -> up.ProfileId)
+    |> Option.bind (fun up -> up.PossibleProfileId)
 
 let getRoles (userRoleRows: UserRoleRow list) (user: UserRoleRow) : Role list =
   userRoleRows
