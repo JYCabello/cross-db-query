@@ -1,4 +1,4 @@
-﻿module CrossDdQueryFs.Migration
+﻿module CrossDdQueryFs.MigrationMultiProfile
 
 open System
 open System.IO
