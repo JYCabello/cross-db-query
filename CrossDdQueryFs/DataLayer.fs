@@ -182,7 +182,7 @@ module Repository =
                   |> List.tryFind (fun (p: Profile) -> p.ID = pId)
                   |> Option.map (fun p -> { UserId = s.UserId; Dashboard = p.DefaultDashboard })
               )
-      printfn "Finished processing of page %i" page
+
       return
           settings
             |> List.map toUserSettings
