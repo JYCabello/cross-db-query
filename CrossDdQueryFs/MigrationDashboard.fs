@@ -8,7 +8,7 @@ let program () =
     let batchSize = 500
     let pages = count / batchSize + 1
     let parallelDegree = 15
-    printfn "Getting dashboards to set, %i batches of %i elements" pages batchSize
+    printfn $"Getting dashboards to set, %i{pages} batches of %i{batchSize} elements"
     let! toSet =
       List.init pages (fun page -> R.dashboardsToSet page batchSize profiles)
         |> (fun a -> Async.Parallel (a, parallelDegree))

@@ -85,6 +85,6 @@ let program () =
         |> List.filter (hasIncorrectRoles userProfileRows rolesPerProfile)
         |> List.map (toDelinquent userProfileRows rolesPerProfile allProfiles allRoles)
     printfn "%A" delinquentUsers
-    printfn $"Users with non matching roles: {delinquentUsers |> List.length} \nTotal: {distinctUsers |> List.length}"
+    printfn $"Users with non matching roles: %i{delinquentUsers |> List.length} \nTotal: %i{distinctUsers |> List.length}"
     File.WriteAllLines("output.txt", List.map (sprintf "%A") delinquentUsers)
   }

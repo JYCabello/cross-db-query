@@ -104,7 +104,7 @@ module Repository =
     let setUsersProfilesChunk (userProfilesChunk: Map<Guid, Guid list>) =
       async {
         let ctx = custCtx()
-        printfn "Started processing chunk %i" (userProfilesChunk.GetHashCode())
+        printfn $"Started processing chunk %i{userProfilesChunk.GetHashCode()}"
         let toRelations userID profileIDs =
             profileIDs
             |> List.fold (fun acc profileID -> ctx.Dbo.UsersApplicationFunctionProfiles.``Create(FunctionProfileCode, UserId)``(profileID, userID) :: acc) []
@@ -131,12 +131,13 @@ module Repository =
             |> Map.filter onlyNotYetAssignedProfiles
             |> Map.fold (fun acc userID profileIDs -> acc |> List.append (toRelations userID profileIDs) ) []
         do! ctx.SubmitUpdatesAsync()
-        printfn "Completed processing chunk %i" (userProfilesChunk.GetHashCode())
+        printfn $"Completed processing chunk %i{userProfilesChunk.GetHashCode()}"
         return (settings, existingRelations, newRelations |> List.map (fun r -> (r.UserId, r.FunctionProfileCode)))
       }
     async {
       let chunkSize = 750
-      printfn "Total of %i, iterating on %i batches" userProfiles.Count (userProfiles.Count / chunkSize)
+      let batchCount = userProfiles.Count / chunkSize
+      printfn $"Total of %i{userProfiles.Count}, iterating on %i{batchCount} batches"
       let! results =
         userProfiles
           |> MapUtils.chunkMap chunkSize
@@ -195,7 +196,7 @@ module Repository =
     let ctx = custCtx()
     let ids = dashboardsToSet |> List.map (fun dts -> dts.UserId) |> List.toArray
     async {
-      printfn "Starting processing of page of dashboards %i" (dashboardsToSet.GetHashCode())
+      printfn $"Starting processing of page of dashboards %i{dashboardsToSet.GetHashCode()}"
       let! settings =
         query {
           for s in ctx.Dbo.UserSettings do
@@ -212,5 +213,5 @@ module Repository =
         |> List.iter (fun (dts, s) -> s.Dashboard <- dts.Dashboard |> Some)
 
       do! ctx.SubmitUpdatesAsync ()
-      printfn "Finished processing of page of dashboards %i" (dashboardsToSet.GetHashCode())
+      printfn $"Finished processing of page of dashboards %i{dashboardsToSet.GetHashCode()}"
     }
