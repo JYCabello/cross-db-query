@@ -81,7 +81,7 @@ module MapUtils =
       |> Map.fold (fun acc key values -> values |> toDenormalizedTuples key |> List.append acc) []
       |> List.map (fun (key, value) -> (key.ToString(), value.ToString()))
       |> (fun l -> ("UserID", "ProfileID") :: l)
-      |> List.map (fun (key, value) -> $"{key}, {value}")
+      |> List.map (fun (key, value) -> $"%s{key}, %s{value}")
     
 type ListUtils =
   static member appendTupleList tupleList =

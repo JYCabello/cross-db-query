@@ -134,6 +134,7 @@ module Repository =
         printfn $"Completed processing chunk %i{userProfilesChunk.GetHashCode()}"
         return (settings, existingRelations, newRelations |> List.map (fun r -> (r.UserId, r.FunctionProfileCode)))
       }
+
     async {
       let chunkSize = 750
       let batchCount = userProfiles.Count / chunkSize
