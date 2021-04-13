@@ -80,13 +80,13 @@ let hasIncorrectRoles userProfileRows rolesPerProfile user =
 module R = Repository
 let program () =
   async {
-    let! (userRoleRows, rolesPerProfile, userProfileRows, allProfiles, allRoles) =
-      Parallel.tuple (R.usersRoles, R.rolesPerProfile, R.usersProfilesBySettings, R.profiles, R.roles)
-    let distinctUsers = toDistinctUsers userProfileRows userRoleRows
+    let! (userRoles, rolesPerProfile, userProfiles, allProfiles, allRoles) =
+      Parallel.tuple (R.usersRoles(), R.rolesPerProfile(), R.usersProfilesBySettings(), R.profiles(), R.roles())
+    let distinctUsers = toDistinctUsers userProfiles userRoles
     let delinquentUsers =
       distinctUsers 
-      |> List.filter (hasIncorrectRoles userProfileRows rolesPerProfile)
-      |> List.map (toDelinquent userProfileRows rolesPerProfile allProfiles allRoles)
+      |> List.filter (hasIncorrectRoles userProfiles rolesPerProfile)
+      |> List.map (toDelinquent userProfiles rolesPerProfile allProfiles allRoles)
     printfn "%A" delinquentUsers
     printfn $"Users with non matching roles: %i{delinquentUsers |> List.length} \nTotal: %i{distinctUsers |> List.length}"
     File.WriteAllLines("output.txt", List.map (sprintf "%A") delinquentUsers)
