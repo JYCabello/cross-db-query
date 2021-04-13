@@ -79,7 +79,7 @@ module Repository =
     } |> List.executeQueryAsync
 
   type UserWithProfiles = { UserId: Guid; ProfileIDs: Guid list }
-  
+
   let usersProfilesTotal () =
     let ctx = custCtx()
     async {
@@ -105,34 +105,46 @@ module Repository =
       async {
         let ctx = custCtx()
         printfn $"Started processing chunk %i{userProfilesChunk.GetHashCode()}"
-        let toRelations userID profileIDs =
+
+        let createRelations userID profileIDs =
             profileIDs
-            |> List.fold (fun acc profileID -> ctx.Dbo.UsersApplicationFunctionProfiles.``Create(FunctionProfileCode, UserId)``(profileID, userID) :: acc) []
+            |> List.fold
+                 (fun acc profileID -> ctx.Dbo.UsersApplicationFunctionProfiles.``Create(FunctionProfileCode, UserId)``(profileID, userID) :: acc)
+                 []
+
         let userIDs = userProfilesChunk |> Map.fold (fun acc key _ -> key :: acc) [] |> List.toArray
+
         let! settings =
-          query {
-            for s in ctx.Dbo.UserSettings do
-            where (userIDs.Contains(s.UserId))
-          } |> List.executeQueryAsync
+          query { for s in ctx.Dbo.UserSettings do where (userIDs.Contains(s.UserId)) }
+          |> List.executeQueryAsync
+
         settings |> List.iter (fun s -> s.FunctionProfileCode <- None)
+
         let! existingRelations =
-          query {
-            for uafp in ctx.Dbo.UsersApplicationFunctionProfiles do
-            where (userIDs.Contains(uafp.UserId))
-          } |> List.executeQueryAsync
+          query { for uafp in ctx.Dbo.UsersApplicationFunctionProfiles do where (userIDs.Contains(uafp.UserId)) }
+          |> List.executeQueryAsync
+
         let onlyExistingProfiles = List.filter (fun pID -> allProfiles |> List.exists (fun p -> p.ID = pID))
+
         let onlyNotYetAssignedProfiles userID profileIDs =
           existingRelations
-            |> List.exists (fun r -> r.UserId = userID && profileIDs |> List.exists (fun pid -> pid = r.FunctionProfileCode))
-            |> not
+          |> List.exists (fun r -> r.UserId = userID && profileIDs |> List.exists (fun pid -> pid = r.FunctionProfileCode))
+          |> not
+
         let newRelations =
           userProfilesChunk
-            |> Map.map (fun _ pIDs -> pIDs |> onlyExistingProfiles)
-            |> Map.filter onlyNotYetAssignedProfiles
-            |> Map.fold (fun acc userID profileIDs -> acc |> List.append (toRelations userID profileIDs) ) []
+          |> Map.map (fun _ pIDs -> pIDs |> onlyExistingProfiles)
+          |> Map.filter onlyNotYetAssignedProfiles
+          |> Map.fold (fun acc userID profileIDs -> acc |> List.append (createRelations userID profileIDs) ) []
+
         do! ctx.SubmitUpdatesAsync()
         printfn $"Completed processing chunk %i{userProfilesChunk.GetHashCode()}"
-        return (settings, existingRelations, newRelations |> List.map (fun r -> (r.UserId, r.FunctionProfileCode)))
+
+        return (
+          settings,
+          existingRelations,
+          newRelations |> List.map (fun r -> (r.UserId, r.FunctionProfileCode))
+        )
       }
 
     async {
@@ -141,9 +153,9 @@ module Repository =
       printfn $"Total of %i{userProfiles.Count}, iterating on %i{batchCount} batches"
       let! results =
         userProfiles
-          |> MapUtils.chunkMap chunkSize
-          |> List.map setUsersProfilesChunk
-          |> (fun c -> Async.Parallel (c, 10))
+        |> MapUtils.chunkMap chunkSize
+        |> List.map setUsersProfilesChunk
+        |> (fun c -> Async.Parallel (c, 10))
       return results |> ListUtils.appendTupleList
     }
 
@@ -171,8 +183,8 @@ module Repository =
       let toUserSettings (s: CustomerDb.dataContext.``dbo.UserSettingsEntity``) =
         let profileID =
           profilesLinked
-            |> List.tryFind (fun p -> p.UserId = s.UserId)
-            |> Option.map (fun p -> p.FunctionProfileCode)
+          |> List.tryFind (fun p -> p.UserId = s.UserId)
+          |> Option.map (fun p -> p.FunctionProfileCode)
         { UserId = s.UserId
           Dashboard = s.Dashboard
           ProfileId = profileID }
@@ -182,15 +194,15 @@ module Repository =
           |> Option.bind
                (fun pId ->
                 allProfiles
-                  |> List.tryFind (fun p -> p.ID = pId)
-                  |> Option.map (fun p -> { UserId = s.UserId; Dashboard = p.DefaultDashboard })
+                |> List.tryFind (fun p -> p.ID = pId)
+                |> Option.map (fun p -> { UserId = s.UserId; Dashboard = p.DefaultDashboard })
               )
 
       return
           settings
-            |> List.map toUserSettings
-            |> List.filter (fun s -> s.Dashboard.IsNone && s.ProfileId.IsSome)
-            |> List.choose withDashboardID
+          |> List.map toUserSettings
+          |> List.filter (fun s -> s.Dashboard.IsNone && s.ProfileId.IsSome)
+          |> List.choose withDashboardID
     }
 
   let setDb (dashboardsToSet: UserSetDashBoard list) =
