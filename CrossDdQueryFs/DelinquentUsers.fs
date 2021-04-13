@@ -29,23 +29,23 @@ let getProfileRoleIds (usersProfiles: UserProfileRow list) (rolesPerProfile: Rol
 
 let getProfileId (usersProfiles: UserProfileRow list) (u: UserRoleRow) =
   usersProfiles 
-    |> List.tryFind (fun up -> up.UserId = u.UserId) 
-    |> Option.bind (fun up -> up.PossibleProfileId)
+  |> List.tryFind (fun up -> up.UserId = u.UserId)
+  |> Option.bind (fun up -> up.PossibleProfileId)
 
 let getRoles (userRoleRows: UserRoleRow list) (user: UserRoleRow) : Role list =
   userRoleRows
-    |> List.filter (fun u -> u.UserId = user.UserId)
-    |> List.map (fun u -> {Id= u.RoleId; Name= u.RoleName})
+  |> List.filter (fun u -> u.UserId = user.UserId)
+  |> List.map (fun u -> {Id= u.RoleId; Name= u.RoleName})
 
 let toDistinctUsers (usersProfiles: UserProfileRow list) (userRoleRows: UserRoleRow list) =
   userRoleRows
-      |> List.distinctBy (fun u -> u.UserId)
-      |> List.map (fun u -> {
-        Id = u.UserId
-        ProfileId = getProfileId usersProfiles u
-        Roles = getRoles userRoleRows u
-        Email = u.Email
-      })
+  |> List.distinctBy (fun u -> u.UserId)
+  |> List.map (fun u -> {
+    Id = u.UserId
+    ProfileId = getProfileId usersProfiles u
+    Roles = getRoles userRoleRows u
+    Email = u.Email
+  })
 
 let toDelinquent userProfileRows roleProfileRows (allProfiles: Profile list) (allRoles: Role list) (user: UserWithRoles) =
   let profileRoleIds = getProfileRoleIds userProfileRows roleProfileRows user
@@ -53,16 +53,19 @@ let toDelinquent userProfileRows roleProfileRows (allProfiles: Profile list) (al
   let defaultUnknown opt = Option.defaultValue "unknown" opt
   let missingRoles =
    profileRoleIds
-     |> List.filter (fun id -> not (user.Roles |> List.exists (fun r -> r.Id = id)))
-     |> List.map (fun id -> allRoles |> List.find (fun r -> r.Id = id))
+   |> List.filter (fun id -> not (user.Roles |> List.exists (fun r -> r.Id = id)))
+   |> List.map (fun id -> allRoles |> List.find (fun r -> r.Id = id))
   {
     Id = user.Id
-    ProfileId = user.ProfileId |> Option.map (sprintf "%A") |> defaultUnknown
+    ProfileId =
+      user.ProfileId
+      |> Option.map (sprintf "%A")
+      |> defaultUnknown
     ProfileName =
       user.ProfileId
-        |> Option.bind (fun pid -> allProfiles |> List.tryFind (fun p -> p.ID = pid))
-        |> Option.map (fun p -> p.Name)
-        |> defaultUnknown
+      |> Option.bind (fun pid -> allProfiles |> List.tryFind (fun p -> p.ID = pid))
+      |> Option.map (fun p -> p.Name)
+      |> defaultUnknown
     Email = user.Email |> defaultUnknown
     ExtraRoles = extraRoles |> List.map (fun r -> r.Name)
     MissingRoles = missingRoles |> List.map (fun r -> r.Name)
@@ -82,8 +85,8 @@ let program () =
     let distinctUsers = toDistinctUsers userProfileRows userRoleRows
     let delinquentUsers =
       distinctUsers 
-        |> List.filter (hasIncorrectRoles userProfileRows rolesPerProfile)
-        |> List.map (toDelinquent userProfileRows rolesPerProfile allProfiles allRoles)
+      |> List.filter (hasIncorrectRoles userProfileRows rolesPerProfile)
+      |> List.map (toDelinquent userProfileRows rolesPerProfile allProfiles allRoles)
     printfn "%A" delinquentUsers
     printfn $"Users with non matching roles: %i{delinquentUsers |> List.length} \nTotal: %i{distinctUsers |> List.length}"
     File.WriteAllLines("output.txt", List.map (sprintf "%A") delinquentUsers)
