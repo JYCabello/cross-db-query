@@ -72,22 +72,23 @@ module MapUtils =
 
   let chunkMap size =
     Map.fold (fun acc key value -> (key, value) :: acc) [] 
-      >> List.chunkBySize size
-      >> List.map (fun ll -> ll |> List.fold (fun (acc: Map<'a, 'b list>) -> acc.Add) (emptyMap()))
+    >> List.chunkBySize size
+    >> List.map (fun ll -> ll |> List.fold (fun (acc: Map<'a, 'b list>) -> acc.Add) (emptyMap()))
     
   let toLines map =
     let toDenormalizedTuples key = List.fold (fun acc value -> (key, value) :: acc) []
+
     map
-      |> Map.fold (fun acc key values -> values |> toDenormalizedTuples key |> List.append acc) []
-      |> List.map (fun (key, value) -> (key.ToString(), value.ToString()))
-      |> (fun l -> ("UserID", "ProfileID") :: l)
-      |> List.map (fun (key, value) -> $"%s{key}, %s{value}")
+    |> Map.fold (fun acc key values -> values |> toDenormalizedTuples key |> List.append acc) []
+    |> List.map (fun (key, value) -> (key.ToString(), value.ToString()))
+    |> (fun l -> ("UserID", "ProfileID") :: l)
+    |> List.map (fun (key, value) -> $"%s{key}, %s{value}")
     
 type ListUtils =
   static member appendTupleList tupleList =
     tupleList
-      |> Seq.fold
-        (fun (accA, accB, accC) (elmA, elmB, elmC) ->
-          ((elmA |> List.append accA), (elmB |> List.append accB), (elmC |> List.append accC))
-        )
-        ([],[],[])
+    |> Seq.fold
+      (fun (accA, accB, accC) (elmA, elmB, elmC) ->
+        ((elmA |> List.append accA), (elmB |> List.append accB), (elmC |> List.append accC))
+      )
+      ([],[],[])
