@@ -4,7 +4,7 @@ module R = DataLayer.Repository
 let program () =
   async {
     printfn "Getting profiles"
-    let! (count, profiles) = Utils.Parallel.tuple(R.settingsCount(), R.profiles())
+    let! count, profiles = Utils.Parallel.tuple(R.settingsCount(), R.profiles())
     let batchSize = 500
     let pages = count / batchSize + 1
     let parallelDegree = 15
