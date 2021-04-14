@@ -25,7 +25,7 @@ type Parallel =
     async {
       let! childTuple = Parallel.tuple (async1, async2) |> Async.StartChild
       let! child3 = Async.StartChild async3
-      let! (result1, result2) = childTuple
+      let! result1, result2 = childTuple
       let! result3 = child3
       return (result1, result2, result3)
     }
@@ -34,7 +34,7 @@ type Parallel =
     async {
       let! childTuple = Parallel.tuple (async1, async2, async3) |> Async.StartChild
       let! child4 = Async.StartChild async4
-      let! (result1, result2, result3) = childTuple
+      let! result1, result2, result3 = childTuple
       let! result4 = child4
       return (result1, result2, result3, result4)
     }
@@ -43,7 +43,7 @@ type Parallel =
     async {
       let! childTuple = Parallel.tuple (async1, async2, async3, async4) |> Async.StartChild
       let! child5 = Async.StartChild async5
-      let! (result1, result2, result3, result4) = childTuple
+      let! result1, result2, result3, result4 = childTuple
       let! result5 = child5
       return (result1, result2, result3, result4, result5)
     }
@@ -52,7 +52,7 @@ type Parallel =
     async {
       let! childTuple = Parallel.tuple (async1, async2, async3, async4, async5) |> Async.StartChild
       let! child6 = Async.StartChild async6
-      let! (result1, result2, result3, result4, result5) = childTuple
+      let! result1, result2, result3, result4, result5 = childTuple
       let! result6 = child6
       return (result1, result2, result3, result4, result5, result6)
     }
@@ -67,14 +67,14 @@ module MapUtils =
         | false, _ -> []
     d.Add(key, value :: current)
 
-  let collectToMap (l: ('a * 'b) list) =
+  let collectToMap l =
     l |> List.fold (fun acc t -> appendTo t acc) (emptyMap())
 
   let chunkMap size =
     Map.fold (fun acc key value -> (key, value) :: acc) [] 
     >> List.chunkBySize size
     >> List.map (fun ll -> ll |> List.fold (fun (acc: Map<'a, 'b list>) -> acc.Add) (emptyMap()))
-    
+
   let toLines map =
     let toDenormalizedTuples key = List.fold (fun acc value -> (key, value) :: acc) []
 
@@ -83,7 +83,7 @@ module MapUtils =
     |> List.map (fun (key, value) -> (key.ToString(), value.ToString()))
     |> (fun l -> ("UserID", "ProfileID") :: l)
     |> List.map (fun (key, value) -> $"%s{key}, %s{value}")
-    
+
 type ListUtils =
   static member appendTupleList tupleList =
     tupleList
