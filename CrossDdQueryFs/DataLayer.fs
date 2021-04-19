@@ -89,7 +89,7 @@ module Repository =
       let! pairsFromSettings =
         query {
           for up in ctx.Dbo.UserSettings do
-          where (up.FunctionProfileCode.IsSome)
+          where up.FunctionProfileCode.IsSome
           select (up.UserId, up.FunctionProfileCode.Value)
         } |> List.executeQueryAsync
       return pairsFromProfile
@@ -168,7 +168,7 @@ module Repository =
       let! settings =
         query {
           for s in ctx.Dbo.UserSettings do
-          sortBy (s.UserId)
+          sortBy s.UserId
           skip (page * batchSize)
           take batchSize
         } |> List.executeQueryAsync
