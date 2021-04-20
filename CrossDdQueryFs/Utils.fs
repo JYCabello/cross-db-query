@@ -94,11 +94,42 @@ type ListUtils =
       ([],[],[])
 
 module Result =
+  let private (>>=) f r =
+    Result.bind r f
+    
+  let private (>->) f r =
+    Result.map r f
+  
   let zip r1 r2 =
-    r1 |> Result.bind (fun ok1 -> r2 |> Result.map (fun ok2 -> (ok1, ok2)))
+    r1 >>= (fun ok1 -> r2 >-> (fun ok2 -> (ok1, ok2)))
+    
   let zip3 r1 r2 r3 =
-    r1 |> zip r2 |> Result.bind (fun (ok1, ok2) -> r3 |> Result.map (fun ok3 -> (ok1, ok2, ok3)))
+    r1 >>= fun ok1 ->
+    r2 >>= fun ok2 ->
+    r3 >-> fun ok3 ->
+    ok1, ok2, ok3
+    
   let zip4 r1 r2 r3 r4 =
-    r1
-    |> zip3 r2 r3
-    |> Result.bind (fun (ok1, ok2, ok3) -> r4 |> Result.map (fun ok4 -> (ok1, ok2, ok3, ok4)))
+    r1 >>= fun ok1 ->
+    r2 >>= fun ok2 ->
+    r3 >>= fun ok3 ->
+    r4 >-> fun ok4 ->
+    ok1, ok2, ok3, ok4
+    
+  let zip5 r1 r2 r3 r4 r5 =
+    r1 >>= fun ok1 ->
+    r2 >>= fun ok2 ->
+    r3 >>= fun ok3 ->
+    r4 >>= fun ok4 ->
+    r5 >-> fun ok5 ->
+    ok1, ok2, ok3, ok4, ok5
+    
+  let zip6 r1 r2 r3 r4 r5 r6 =
+    r1 >>= fun ok1 ->
+    r2 >>= fun ok2 ->
+    r3 >>= fun ok3 ->
+    r4 >>= fun ok4 ->
+    r5 >>= fun ok5 ->
+    r6 >-> fun ok6 ->
+    ok1, ok2, ok3, ok4, ok5, ok6
+    
