@@ -92,3 +92,13 @@ type ListUtils =
         ((elmA |> List.append accA), (elmB |> List.append accB), (elmC |> List.append accC))
       )
       ([],[],[])
+
+module Result =
+  let zip r1 r2 =
+    r1 |> Result.bind (fun ok1 -> r2 |> Result.map (fun ok2 -> (ok1, ok2)))
+  let zip3 r1 r2 r3 =
+    r1 |> zip r2 |> Result.bind (fun (ok1, ok2) -> r3 |> Result.map (fun ok3 -> (ok1, ok2, ok3)))
+  let zip4 r1 r2 r3 r4 =
+    r1
+    |> zip3 r2 r3
+    |> Result.bind (fun (ok1, ok2, ok3) -> r4 |> Result.map (fun ok4 -> (ok1, ok2, ok3, ok4)))
