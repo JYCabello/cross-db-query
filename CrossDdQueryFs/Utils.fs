@@ -101,7 +101,9 @@ module Result =
     Result.map r f
   
   let zip r1 r2 =
-    r1 >>= (fun ok1 -> r2 >-> (fun ok2 -> (ok1, ok2)))
+    r1 >>= fun ok1 ->
+    r2 >-> fun ok2 ->
+    (ok1, ok2)
     
   let zip3 r1 r2 r3 =
     r1 >>= fun ok1 ->
